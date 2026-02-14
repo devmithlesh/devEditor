@@ -1,0 +1,32 @@
+import { applyMarkToSelection, isMarkActive } from './bold.js'
+
+const DEFAULT_COLORS = [
+  '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef', '#f3f3f3', '#ffffff',
+  '#980000', '#ff0000', '#ff9900', '#ffff00', '#00ff00', '#00ffff', '#4a86e8', '#0000ff', '#9900ff', '#ff00ff',
+  '#e6b8af', '#f4cccc', '#fce5cd', '#fff2cc', '#d9ead3', '#d0e0e3', '#c9daf8', '#cfe2f3', '#d9d2e9', '#ead1dc',
+  '#dd7e6b', '#ea9999', '#f9cb9c', '#ffe599', '#b6d7a8', '#a2c4c9', '#a4c2f4', '#9fc5e8', '#b4a7d6', '#d5a6bd',
+  '#cc4125', '#e06666', '#f6b26b', '#ffd966', '#93c47d', '#76a5af', '#6d9eeb', '#6fa8dc', '#8e7cc3', '#c27ba0',
+]
+
+export function foreColorPlugin() {
+  return {
+    name: 'forecolor',
+    commands: {
+      foreColor: (engine, color) => {
+        applyMarkToSelection(engine, 'foreColor', { color })
+      },
+    },
+    toolbarButtons: {
+      forecolor: {
+        type: 'colorpicker',
+        label: 'Text Color',
+        tooltip: 'Text Color',
+        icon: '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M11 2L5.5 16h2.25l1.12-3h6.25l1.12 3h2.25L13 2h-2zm-1.38 9L12 4.67 14.38 11H9.62z" fill="currentColor"/><rect x="3" y="18" width="18" height="4" rx="1" fill="currentColor" opacity="0.7"/></svg>',
+        colors: DEFAULT_COLORS,
+        command: 'foreColor',
+        isActive: (engine) => isMarkActive(engine, 'foreColor'),
+      },
+    },
+    menuItems: { format: [{ label: 'Text Color...', command: 'foreColor' }] },
+  }
+}

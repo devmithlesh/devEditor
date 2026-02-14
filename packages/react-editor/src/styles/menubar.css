@@ -1,0 +1,112 @@
+/* Menu bar */
+.de-menubar {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  background: var(--de-menubar-bg);
+  border-bottom: 1px solid var(--de-menubar-border-color);
+  font-size: var(--de-menubar-font-size);
+  user-select: none;
+}
+
+.de-menubar-item-wrapper {
+  position: relative;
+}
+
+.de-menubar-item {
+  padding: var(--de-menubar-item-padding);
+  border: none;
+  background: transparent;
+  color: var(--de-text-color);
+  font-size: inherit;
+  font-family: var(--de-font-family);
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.1s;
+}
+
+.de-menubar-item:hover {
+  background: var(--de-menubar-item-hover-bg);
+}
+
+.de-menubar-item--active {
+  background: var(--de-menubar-item-active-bg);
+}
+
+/* Menu dropdown */
+.de-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  min-width: 220px;
+  background: var(--de-menubar-dropdown-bg);
+  border: var(--de-menubar-dropdown-border);
+  border-radius: var(--de-menubar-dropdown-radius);
+  box-shadow: var(--de-menubar-dropdown-shadow);
+  padding: 4px 0;
+  margin-top: 1px;
+}
+
+.de-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-family: var(--de-font-family);
+  color: var(--de-text-color);
+  cursor: pointer;
+  text-align: left;
+  gap: 8px;
+}
+
+.de-menu-item:hover {
+  background: var(--de-menubar-dropdown-item-hover-bg);
+  color: var(--de-menubar-dropdown-item-hover-color);
+}
+
+.de-menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.de-menu-item:disabled:hover {
+  background: transparent;
+  color: var(--de-text-color);
+}
+
+.de-menu-item-icon {
+  width: 18px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 12px;
+}
+
+.de-menu-item-label {
+  flex: 1;
+}
+
+.de-menu-item-shortcut {
+  opacity: 0.5;
+  font-size: 12px;
+  margin-left: 24px;
+}
+
+.de-menu-item-arrow {
+  opacity: 0.5;
+  font-size: 10px;
+}
+
+.de-menu-separator {
+  height: 1px;
+  background: var(--de-toolbar-separator-color);
+  margin: 4px 8px;
+}
+
+.de-menu-check {
+  color: var(--de-toolbar-btn-active-color);
+  font-size: 12px;
+}

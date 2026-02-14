@@ -1,0 +1,97 @@
+/* StatusBar */
+.de-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  font-family: var(--de-font-family);
+  font-size: 12px;
+  line-height: 1.4;
+  color: #6b7280;
+  background: #f9fafb;
+  border-top: 1px solid var(--de-border-color, #e0e0e0);
+  user-select: none;
+  min-height: 24px;
+}
+
+/* Left side: element breadcrumb path */
+.de-statusbar-path {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.de-statusbar-path-sep {
+  margin: 0 1px;
+  opacity: 0.6;
+}
+
+.de-statusbar-path-item {
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: 2px;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.de-statusbar-path-item:hover {
+  text-decoration: underline;
+  color: var(--de-focus-color, #2563eb);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+/* Right side container */
+.de-statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 16px;
+}
+
+/* Word & character count */
+.de-statusbar-wordcount {
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+/* Resize handle */
+.de-statusbar-resize {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  cursor: ns-resize;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Three horizontal lines to indicate a drag handle */
+.de-statusbar-resize::before {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 0;
+  width: 12px;
+  height: 2px;
+  border-top: 2px solid #c0c4cc;
+  border-bottom: 2px solid #c0c4cc;
+}
+
+.de-statusbar-resize::after {
+  content: '';
+  position: absolute;
+  bottom: 9px;
+  right: 0;
+  width: 12px;
+  height: 0;
+  border-top: 2px solid #c0c4cc;
+}
+
+.de-statusbar-resize:hover::before,
+.de-statusbar-resize:hover::after {
+  border-color: #6b7280;
+}

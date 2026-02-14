@@ -1,0 +1,6 @@
+@import './variables.css';
+@import './editor.css';
+@import './toolbar.css';
+@import './menubar.css';
+@import './statusbar.css';
+@import './contextmenu.css';
