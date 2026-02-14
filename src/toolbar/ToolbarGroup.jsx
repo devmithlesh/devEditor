@@ -6,6 +6,7 @@ import { ToolbarButton } from './ToolbarButton.jsx'
 import { ToolbarDropdown } from './ToolbarDropdown.jsx'
 import { ToolbarColorPicker } from './ToolbarColorPicker.jsx'
 import { ToolbarPopupButton } from './ToolbarPopupButton.jsx'
+import { ToolbarStepper } from './ToolbarStepper.jsx'
 
 /**
  * @param {{ buttons: Array<import('../types/plugin.types.js').ToolbarButtonDef> }} props
@@ -22,6 +23,9 @@ export function ToolbarGroup({ buttons }) {
         }
         if (button.type === 'dropdown') {
           return <ToolbarDropdown key={button.name} button={button} />
+        }
+        if (button.type === 'stepper') {
+          return <ToolbarStepper key={button.name} button={button} />
         }
         return <ToolbarButton key={button.name} button={button} />
       })}

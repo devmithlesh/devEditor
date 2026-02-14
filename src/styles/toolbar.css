@@ -119,7 +119,8 @@
 }
 
 .de-toolbar-dropdown-item {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
   text-align: left;
   padding: 6px 12px;
@@ -129,6 +130,9 @@
   color: var(--de-text-color);
   cursor: pointer;
   font-family: var(--de-font-family);
+  gap: 8px;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .de-toolbar-dropdown-item:hover {
@@ -138,7 +142,64 @@
 
 .de-toolbar-dropdown-item--active {
   color: var(--de-toolbar-btn-active-color);
-  font-weight: 600;
+}
+
+.de-toolbar-dropdown-check {
+  width: 16px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--de-toolbar-btn-active-color, #2563eb);
+}
+
+/* Stepper (font size -/+ control) */
+.de-toolbar-stepper {
+  display: inline-flex;
+  align-items: center;
+  height: var(--de-toolbar-btn-size);
+  border: 1px solid var(--de-toolbar-separator-color);
+  border-radius: var(--de-toolbar-btn-radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.de-toolbar-stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 100%;
+  border: none;
+  background: var(--de-bg-color);
+  color: var(--de-toolbar-btn-color);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  line-height: 1;
+}
+
+.de-toolbar-stepper-btn:hover {
+  background: var(--de-toolbar-btn-hover-bg);
+}
+
+.de-toolbar-stepper-input {
+  width: 48px;
+  height: 100%;
+  border: none;
+  border-left: 1px solid var(--de-toolbar-separator-color);
+  border-right: 1px solid var(--de-toolbar-separator-color);
+  text-align: center;
+  font-size: 13px;
+  font-family: var(--de-font-family);
+  color: var(--de-text-color);
+  background: var(--de-bg-color);
+  padding: 0 2px;
+  outline: none;
+}
+
+.de-toolbar-stepper-input:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #3b82f6;
 }
 
 /* Overflow */

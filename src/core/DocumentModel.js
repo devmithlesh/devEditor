@@ -395,6 +395,11 @@ export class DocumentModel {
         block.content.push({ id: generateId(), type: 'text', text: '' })
       }
     }
+    // Ensure the document always ends with a paragraph so the user can type after tables/images/HR
+    const last = this.doc.content[this.doc.content.length - 1]
+    if (last && last.type !== 'paragraph' && last.type !== 'heading') {
+      this.doc.content.push(this._createEmptyParagraph())
+    }
   }
 
   /** @private */

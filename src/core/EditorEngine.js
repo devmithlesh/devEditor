@@ -505,14 +505,76 @@ export class EditorEngine {
       this._selection.restoreSelection()
       this._bumpVersion()
     } else {
-      // At the start of a text node — try to merge with previous block
+      // At the start of a text node (offset === 0)
       const blockInfo = this._findBlockForTextNode(nodeId)
       if (!blockInfo) return
 
       // Check if this is the first text node in the block
-      const textNodes = getTextNodes(findNodeById(this._model.doc, blockInfo.id))
+      const blockNode = findNodeById(this._model.doc, blockInfo.id)
+      const textNodes = getTextNodes(blockNode)
       if (textNodes[0]?.id !== nodeId) return // Not at start of block
 
+      // Find the block's parent to check what's before it
+      const parentInfo = findParent(this._model.doc, blockInfo.id)
+      if (!parentInfo) return
+
+      // Check if we're inside a table cell
+      if (parentInfo.parent.type === 'tableCell') {
+        // At start of first paragraph in a table cell
+        if (parentInfo.index === 0) {
+          // Check if the entire table is empty — if so, delete the table
+          const cellParent = findParent(this._model.doc, parentInfo.parent.id)
+          if (!cellParent) return
+          const rowParent = findParent(this._model.doc, cellParent.parent.id)
+          if (!rowParent) return
+          const table = rowParent.parent
+          if (table && table.type === 'table') {
+            // Check if ALL cells in the table are empty
+            let allEmpty = true
+            walkTree(table, (n) => {
+              if (n.type === 'text' && n.text.trim()) { allEmpty = false; return false }
+            })
+            if (allEmpty) {
+              if (this._historyManager) {
+                this._historyManager.push(this._model.getDoc(), sel)
+              }
+              const tableParent = findParent(this._model.doc, table.id)
+              if (tableParent) {
+                tableParent.parent.content.splice(tableParent.index, 1)
+              }
+              this._model._ensureMinimumContent()
+              this._reconcile()
+              // Place cursor in the first available text node
+              const firstText = getTextNodes(this._model.doc)[0]
+              if (firstText) {
+                this._selection.setCursorToNode(firstText.id, 0)
+              }
+              this._bumpVersion()
+            }
+          }
+        }
+        return
+      }
+
+      // Check if the previous sibling is a non-text block (table, HR, image, pageBreak)
+      if (parentInfo.index > 0) {
+        const prevBlock = parentInfo.parent.content[parentInfo.index - 1]
+        const nonMergeableTypes = ['table', 'horizontalRule', 'image', 'pageBreak', 'codeBlock']
+        if (nonMergeableTypes.includes(prevBlock.type)) {
+          // Delete the previous block element
+          if (this._historyManager) {
+            this._historyManager.push(this._model.getDoc(), sel)
+          }
+          parentInfo.parent.content.splice(parentInfo.index - 1, 1)
+          this._model._ensureMinimumContent()
+          this._reconcile()
+          this._selection.restoreSelection()
+          this._bumpVersion()
+          return
+        }
+      }
+
+      // Normal merge with previous paragraph/heading block
       if (this._historyManager) {
         this._historyManager.push(this._model.getDoc(), sel)
       }
@@ -745,8 +807,10 @@ export class EditorEngine {
       case 'tableRow':
         return this._renderBlock('tr', node)
       case 'tableCell': {
+        // Hidden cells are absorbed by a merged cell — skip rendering
+        if (node.attrs?.hidden) return ''
         const tag = node.attrs?.header ? 'th' : 'td'
-        return this._renderBlock(tag, node)
+        return this._renderTableCell(tag, node)
       }
       case 'hardBreak':
         return '<br/>'
@@ -808,6 +872,16 @@ export class EditorEngine {
     const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : ''
     const dirAttr = node.attrs?.dir ? ` dir="${node.attrs.dir}"` : ''
     return `<${tag} ${NODE_ID_ATTR}="${node.id}"${styleAttr}${dirAttr}>${this._renderChildren(node)}</${tag}>`
+  }
+
+  /** @private — renders a table cell with colspan/rowspan support */
+  _renderTableCell(tag, node) {
+    const styles = []
+    if (node.attrs?.textAlign) styles.push(`text-align: ${node.attrs.textAlign}`)
+    const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : ''
+    const cs = node.attrs?.colspan > 1 ? ` colspan="${node.attrs.colspan}"` : ''
+    const rs = node.attrs?.rowspan > 1 ? ` rowspan="${node.attrs.rowspan}"` : ''
+    return `<${tag} ${NODE_ID_ATTR}="${node.id}"${cs}${rs}${styleAttr}>${this._renderChildren(node)}</${tag}>`
   }
 
   /** @private */

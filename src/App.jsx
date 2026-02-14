@@ -1,6 +1,6 @@
 import { useRef } from 'react'
-import { Editor, defaultPlugins } from '@deveditor/react-editor'
-import '@deveditor/react-editor/styles'
+import { Editor, defaultPlugins } from './index.js'
+import './styles/base.css'
 import './App.css'
 
 function App() {

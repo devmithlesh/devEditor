@@ -110,3 +110,68 @@
   color: var(--de-toolbar-btn-active-color);
   font-size: 12px;
 }
+
+/* Submenu support */
+.de-menu-item-wrapper {
+  position: relative;
+}
+
+.de-menu-item--hover {
+  background: var(--de-menubar-dropdown-item-hover-bg);
+  color: var(--de-menubar-dropdown-item-hover-color);
+}
+
+.de-menu-submenu {
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  z-index: 1001;
+  min-width: 200px;
+  background: var(--de-menubar-dropdown-bg);
+  border: var(--de-menubar-dropdown-border);
+  border-radius: var(--de-menubar-dropdown-radius);
+  box-shadow: var(--de-menubar-dropdown-shadow);
+  padding: 4px 0;
+}
+
+/* Table grid picker */
+.de-table-grid-picker {
+  padding: 8px;
+}
+
+.de-table-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 18px);
+  grid-template-rows: repeat(10, 18px);
+  gap: 2px;
+}
+
+.de-table-grid-cell {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 1px;
+}
+
+.de-table-grid-cell--active {
+  background: #3b82f6;
+  border-color: #2563eb;
+}
+
+.de-table-grid-label {
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+  padding-top: 6px;
+}
+
+/* Menu icon SVG sizing */
+.de-menu-item-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  vertical-align: middle;
+}

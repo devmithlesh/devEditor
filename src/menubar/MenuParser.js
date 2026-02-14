@@ -51,11 +51,7 @@ export function getDefaultMenuItems() {
       { label: 'Word count', command: 'wordCount' },
       { label: 'Source code', command: 'viewSource' },
     ],
-    table: [
-      { label: 'Insert table...', command: 'insertTable' },
-      { type: 'separator' },
-      { label: 'Delete table', command: 'deleteTable' },
-    ],
+    table: [],  // Populated by table plugin
     help: [
       { label: 'Keyboard shortcuts', command: 'showShortcuts' },
       { label: 'About', command: 'showAbout' },

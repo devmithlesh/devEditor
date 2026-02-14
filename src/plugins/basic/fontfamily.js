@@ -1,4 +1,5 @@
 import { applyMarkToSelection } from './bold.js'
+import { findNodeById } from '../../utils/helpers.js'
 
 export function fontFamilyPlugin() {
   return {
@@ -13,6 +14,15 @@ export function fontFamilyPlugin() {
         type: 'dropdown',
         label: 'Font Family',
         tooltip: 'Font Family',
+        command: 'fontFamily',
+        getLabel: (engine) => {
+          const sel = engine._selection?.getSavedSelection()
+          if (!sel) return 'Font Family'
+          const node = findNodeById(engine._model.doc, sel.anchorNodeId)
+          if (!node || node.type !== 'text') return 'Font Family'
+          const mark = node.marks?.find((m) => m.type === 'fontFamily')
+          return mark?.attrs?.family || 'Font Family'
+        },
         options: [
           { label: 'Arial', value: 'Arial' },
           { label: 'Helvetica', value: 'Helvetica' },
@@ -22,7 +32,6 @@ export function fontFamilyPlugin() {
           { label: 'Verdana', value: 'Verdana' },
           { label: 'Trebuchet MS', value: 'Trebuchet MS' },
         ],
-        command: 'fontFamily',
       },
     },
     menuItems: { format: [{ label: 'Font Family', submenu: 'fontfamily' }] },
