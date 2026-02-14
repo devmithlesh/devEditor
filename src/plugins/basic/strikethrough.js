@@ -22,12 +22,17 @@ export function strikethroughPlugin() {
         icon: '<svg viewBox="0 0 24 24"><path d="M10 19h4v-3h-4v3zM5 4v3h5v3h4V7h5V4H5zM3 14h18v-2H3v2z" fill="currentColor"/></svg>',
         command: 'strikethrough',
         type: 'button',
+        shortcutLabel: 'Ctrl+Shift+X',
         isActive: (engine) => isMarkActive(engine, 'strikethrough'),
       },
     ],
 
     menuItems: [
-      { menu: 'format', label: 'Strikethrough', command: 'strikethrough' },
+      { menu: 'format', label: 'Strikethrough', command: 'strikethrough', shortcutLabel: 'Ctrl+Shift+X' },
+    ],
+
+    shortcuts: [
+      { combo: 'ctrl+shift+x', command: 'strikethrough' },
     ],
   }
 }

@@ -12,7 +12,7 @@
  *   />
  */
 
-import { forwardRef, useImperativeHandle, useCallback, useState } from 'react'
+import { forwardRef, useImperativeHandle, useCallback, useState, useEffect, useRef } from 'react'
 import { useEditor } from '../hooks/useEditor.js'
 import { EditorProvider } from '../core/EditorContext.jsx'
 import { EditorContainer } from './EditorContainer.jsx'
@@ -23,12 +23,13 @@ import { Toolbar } from '../toolbar/Toolbar.jsx'
 import { MenuBar } from '../menubar/MenuBar.jsx'
 import { MentionDropdown } from './MentionDropdown.jsx'
 
-const DEFAULT_TOOLBAR = 'undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | bullist numlist | outdent indent | link image | removeformat'
+const DEFAULT_TOOLBAR = 'undo redo | formatselect | bold italic underline strikethrough | alignleft | bullist numlist | outdent indent | link image | removeformat'
 const DEFAULT_MENUBAR = 'file edit view insert format tools table help'
 
 const Editor = forwardRef(function Editor(props, ref) {
   const {
     initialValue,
+    value,
     onInit,
     init = {},
     onEditorChange,
@@ -36,7 +37,7 @@ const Editor = forwardRef(function Editor(props, ref) {
   } = props
 
   const { engine, instance } = useEditor({
-    initialValue,
+    initialValue: value !== undefined ? value : initialValue,
     onInit,
     init,
     onEditorChange,
@@ -46,6 +47,23 @@ const Editor = forwardRef(function Editor(props, ref) {
   useImperativeHandle(ref, () => instance, [instance])
 
   const [editorHeight, setEditorHeight] = useState(init.height || 300)
+  const isUpdatingFromPropRef = useRef(false)
+
+  // Handle controlled value prop (like TinyMCE React)
+  useEffect(() => {
+    if (value !== undefined && engine) {
+      const currentContent = engine.getContent()
+      // Only update if content actually differs (avoid unnecessary updates)
+      if (currentContent !== value) {
+        isUpdatingFromPropRef.current = true
+        engine.setContent(value)
+        // Reset flag after a short delay to allow the update to complete
+        requestAnimationFrame(() => {
+          isUpdatingFromPropRef.current = false
+        })
+      }
+    }
+  }, [value, engine])
 
   const contentStyle = {
     minHeight: `${editorHeight}px`,
@@ -65,7 +83,16 @@ const Editor = forwardRef(function Editor(props, ref) {
   const showToolbar = init.toolbar !== false
   const showStatusbar = init.statusbar !== false
   const menubarConfig = typeof init.menubar === 'string' ? init.menubar : DEFAULT_MENUBAR
-  const toolbarConfig = typeof init.toolbar === 'string' ? init.toolbar : DEFAULT_TOOLBAR
+  
+  // Handle toolbar as string or array (like TinyMCE)
+  let toolbarConfig = DEFAULT_TOOLBAR
+  if (init.toolbar !== undefined && init.toolbar !== false) {
+    if (typeof init.toolbar === 'string') {
+      toolbarConfig = init.toolbar
+    } else if (Array.isArray(init.toolbar)) {
+      toolbarConfig = init.toolbar.join(' | ')
+    }
+  }
 
   return (
     <EditorProvider engine={engine}>

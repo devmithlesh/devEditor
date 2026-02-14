@@ -15,15 +15,22 @@ export function EditorContent({ style, onBlur, placeholder, spellCheck = true })
 
   useEffect(() => {
     const el = contentRef.current
-    if (!el) return
+    if (!el || !engine) return
 
     engine.attach(el)
 
-    // Render initial content
-    const doc = engine.getDoc()
-    if (doc && doc.content) {
-      engine._reconcile()
-    }
+    // Render initial content after attachment
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      const doc = engine.getDoc()
+      if (doc && doc.content && doc.content.length > 0) {
+        engine._reconcile()
+        // Restore cursor position if needed
+        if (engine._selection) {
+          engine._selection.restoreSelection()
+        }
+      }
+    })
 
     return () => {
       engine.detach()

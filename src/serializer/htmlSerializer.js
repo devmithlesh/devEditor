@@ -19,8 +19,16 @@ function serializeNode(node) {
     case 'heading': return wrapBlock(`h${node.attrs?.level || 1}`, node)
     case 'blockquote': return wrapBlock('blockquote', node)
     case 'codeBlock': return `<pre><code>${serializeChildren(node)}</code></pre>`
-    case 'bulletList': return wrapBlock('ul', node)
-    case 'orderedList': return wrapBlock('ol', node)
+    case 'bulletList': {
+      const style = node.attrs?.listStyleType
+      const styleAttr = style ? ` style="list-style-type: ${style}"` : ''
+      return `<ul${styleAttr}>${serializeChildren(node)}</ul>`
+    }
+    case 'orderedList': {
+      const style = node.attrs?.listStyleType
+      const styleAttr = style ? ` style="list-style-type: ${style}"` : ''
+      return `<ol${styleAttr}>${serializeChildren(node)}</ol>`
+    }
     case 'listItem': return wrapBlock('li', node)
     case 'horizontalRule': return '<hr/>'
     case 'image': return `<img src="${esc(node.attrs?.src || '')}" alt="${esc(node.attrs?.alt || '')}"/>`

@@ -22,6 +22,15 @@ export function ToolbarOverflow({ groups }) {
   const [showPopup, setShowPopup] = useState(false)
   const popupRef = useRef(null)
   const overflowBtnRef = useRef(null)
+  const [openDropdownId, setOpenDropdownId] = useState(null) // Track which dropdown is open
+  
+  // Close overflow popup when a dropdown opens
+  const handleDropdownToggle = useCallback((id) => {
+    setOpenDropdownId(id)
+    if (id !== null) {
+      setShowPopup(false) // Close overflow popup when dropdown opens
+    }
+  }, [])
 
   // Cache measured group widths so we don't oscillate.
   // Widths are measured once when all groups render (overflowIndex === -1).
@@ -131,7 +140,12 @@ export function ToolbarOverflow({ groups }) {
     <div className="de-toolbar-overflow-container" ref={containerRef}>
       <div className="de-toolbar-items" ref={itemsRef}>
         {visibleGroups.map((group, i) => (
-          <ToolbarGroup key={i} buttons={group} />
+          <ToolbarGroup 
+            key={i} 
+            buttons={group} 
+            openDropdownId={openDropdownId}
+            onDropdownToggle={handleDropdownToggle}
+          />
         ))}
       </div>
 
@@ -151,7 +165,12 @@ export function ToolbarOverflow({ groups }) {
           {showPopup && (
             <div className="de-toolbar-overflow-popup" ref={popupRef}>
               {overflowGroups.map((group, i) => (
-                <ToolbarGroup key={i} buttons={group} />
+                <ToolbarGroup 
+                  key={i} 
+                  buttons={group}
+                  openDropdownId={openDropdownId}
+                  onDropdownToggle={setOpenDropdownId}
+                />
               ))}
             </div>
           )}

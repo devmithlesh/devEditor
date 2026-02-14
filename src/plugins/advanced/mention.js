@@ -96,12 +96,18 @@ export function mentionPlugin() {
       }
     },
 
-    css: `.de-mention-dropdown { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 4px 0; min-width: 220px; max-width: 300px; }
-.de-mention-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: transparent; cursor: pointer; font-size: 13px; text-align: left; }
-.de-mention-item:hover, .de-mention-item--selected { background: #eff6ff; }
-.de-mention-avatar { width: 28px; height: 28px; border-radius: 50%; background: #dbeafe; color: #3b82f6; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; flex-shrink: 0; }
-.de-mention-name { font-weight: 500; color: #1f2937; }
-.de-mention-id { color: #9ca3af; font-size: 12px; margin-left: auto; }
-[data-node-id] span[style*="mention"] { background: #dbeafe; color: #1d4ed8; padding: 1px 4px; border-radius: 4px; font-weight: 500; }`,
+    css: `.de-mention-dropdown { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 4px 0; min-width: 240px; max-width: 320px; }
+.de-mention-dropdown::-webkit-scrollbar { width: 6px; }
+.de-mention-dropdown::-webkit-scrollbar-track { background: #f9fafb; border-radius: 3px; }
+.de-mention-dropdown::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+.de-mention-dropdown::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+.de-mention-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: none; background: transparent; cursor: pointer; font-size: 14px; text-align: left; transition: background-color 0.15s ease; border-bottom: 1px solid #f3f4f6; }
+.de-mention-item:last-child { border-bottom: none; }
+.de-mention-item:hover, .de-mention-item--selected { background: #f9fafb; }
+.de-mention-avatar { width: 32px; height: 32px; border-radius: 6px; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px; flex-shrink: 0; border: 1px solid #e5e7eb; }
+.de-mention-content { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.de-mention-name { font-weight: 500; color: #111827; font-size: 14px; line-height: 1.4; }
+.de-mention-id { color: #6b7280; font-size: 12px; line-height: 1.3; }
+[data-node-id] span[style*="mention"] { background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 4px; font-weight: 500; }`,
   }
 }

@@ -24,6 +24,8 @@ export function useEditor({ initialValue, onInit, init = {}, onEditorChange, onB
   const engineRef = useRef(null)
   const instanceRef = useRef(null)
   const initializedRef = useRef(false)
+  const onInitRef = useRef(onInit)
+  const initRef = useRef(init)
 
   // Create engine once
   if (!engineRef.current) {
@@ -75,6 +77,7 @@ export function useEditor({ initialValue, onInit, init = {}, onEditorChange, onB
     }, 100)
 
     const unsubscribe = engine.subscribe(() => {
+      // Only trigger onChange if not updating from external prop
       debouncedChange()
     })
 
@@ -84,23 +87,29 @@ export function useEditor({ initialValue, onInit, init = {}, onEditorChange, onB
     }
   }, [onEditorChange])
 
+  // Update refs when props change
+  useEffect(() => {
+    onInitRef.current = onInit
+    initRef.current = init
+  }, [onInit, init])
+
   // Call onInit after first mount
   useEffect(() => {
     if (!initializedRef.current && instanceRef.current) {
       initializedRef.current = true
 
-      // Call setup callback
-      if (init.setup) {
-        init.setup(instanceRef.current)
-      }
+      // Delay slightly to ensure DOM is attached
+      requestAnimationFrame(() => {
+        // Call setup callback
+        if (initRef.current.setup) {
+          initRef.current.setup(instanceRef.current)
+        }
 
-      // Call onInit
-      if (onInit) {
-        // Delay slightly to ensure DOM is attached
-        requestAnimationFrame(() => {
-          onInit(instanceRef.current)
-        })
-      }
+        // Call onInit
+        if (onInitRef.current) {
+          onInitRef.current(instanceRef.current)
+        }
+      })
     }
   }, [])
 

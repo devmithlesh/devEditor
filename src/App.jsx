@@ -1,28 +1,50 @@
 import { useRef } from 'react'
-import { Editor, defaultPlugins } from './index.js'
+import { Editor, defaultPlugins, mentionPlugin } from './index.js'
 import './styles/base.css'
 import './App.css'
 
 function App() {
   const editorRef = useRef(null)
 
+  // Custom users for @mention feature
+  const customUsers = [
+    { id: 'john', name: 'John Doe', avatar: 'JD' },
+    { id: 'jane', name: 'Jane Smith', avatar: 'JS' },
+    { id: 'bob', name: 'Bob Johnson', avatar: 'BJ' },
+    { id: 'alice', name: 'Alice Cooper', avatar: 'AC' },
+  ]
+
+  const handleInit = (editor) => {
+    // Set custom users for @mention
+    if (editor && editor._engine) {
+      editor._engine._mentionUsers = customUsers
+    }
+  }
+
   return (
     <div className="demo-container">
       <header className="demo-header">
         <h1>DevEditor</h1>
         <p>A modern React rich text editor — built from scratch</p>
+        <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
+          💡 Try typing <strong>@</strong> to mention someone!
+        </p>
       </header>
 
       <main className="demo-main">
         <Editor
           ref={editorRef}
+          onInit={handleInit}
           init={{
             height: 500,
             menubar: 'file edit view insert format tools table help',
-            plugins: defaultPlugins(),
+            plugins: [
+              ...defaultPlugins(),
+              mentionPlugin(), // Enable @mention feature
+            ],
             toolbar: [
               'formatselect fontfamily fontsize | undo redo | bold italic underline strikethrough | forecolor backcolor',
-              'alignleft aligncenter alignright alignjustify | bullist numlist | outdent indent | link image table | searchreplace charmap emoticons | fullscreen preview print sourceview | removeformat',
+              'alignment | bullist numlist | outdent indent | link image table | searchreplace charmap emoticons | fullscreen preview print sourceview | removeformat',
             ].join(' | '),
             statusbar: true,
             wordcount: true,
@@ -30,8 +52,12 @@ function App() {
             resize: true,
             browser_spellcheck: true,
             contextmenu: true,
-            placeholder: 'Start typing...',
+            placeholder: 'Start typing... Try typing @ to mention someone!',
             content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; line-height: 1.7; }',
+          }}
+          onEditorChange={(content) => {
+            // You can extract mentions from content here if needed
+            console.log('Editor content changed')
           }}
         />
       </main>

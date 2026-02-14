@@ -17,8 +17,8 @@ export function headingPlugin() {
          * @param {string} blockType - 'paragraph', 'heading1', 'heading2', etc.
          */
         execute: (engine, blockType) => {
-          const sel = engine._selection?.captureSelection()
-          if (!sel || sel.isCollapsed) return
+          const sel = engine._selection?.captureSelection() || engine._selection?.getSavedSelection()
+          if (!sel) return
 
           const block = engine._findBlockForTextNode(sel.anchorNodeId)
           if (!block) return

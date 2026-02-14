@@ -2,11 +2,15 @@
  * @fileoverview ColorPickerPopup — floating panel with color grid and custom input.
  * Used by both forecolor and backcolor toolbar buttons.
  *
- * The popup stays open after selecting a color. It only closes when:
+ * The popup closes when:
+ * - User clicks the Apply button (after applying custom color)
  * - User clicks outside the popup
  * - User clicks the trigger button again
  * - User presses Escape
  * - User clicks the × close button
+ * 
+ * Note: Clicking a color swatch applies the color but keeps the popup open
+ * for quick color selection. Use Apply button to apply custom color and close.
  */
 
 import { useState, useRef, useCallback } from 'react'
@@ -39,8 +43,9 @@ export function ColorPickerPopup({ anchorRef, isOpen, onClose, command, title })
   const handleCustomApply = useCallback(() => {
     if (customColor) {
       applyColor(customColor)
+      onClose() // Close popup after applying color
     }
-  }, [customColor, applyColor])
+  }, [customColor, applyColor, onClose])
 
   return (
     <ToolbarPopup anchorRef={anchorRef} isOpen={isOpen} onClose={onClose} width={240}>

@@ -231,10 +231,11 @@ export class DocumentModel {
   /**
    * Wrap a block node in a new parent block (e.g., wrap paragraph in list).
    * @param {{ blockId: string, wrapperType: string }} data
+   * @returns {Object|null} The created wrapper node
    */
   _wrapInBlock({ blockId, wrapperType }) {
     const parentInfo = findParent(this.doc, blockId)
-    if (!parentInfo) return
+    if (!parentInfo) return null
 
     const block = parentInfo.parent.content[parentInfo.index]
     const listItem = {
@@ -248,6 +249,7 @@ export class DocumentModel {
       content: [listItem],
     }
     parentInfo.parent.content[parentInfo.index] = wrapper
+    return wrapper
   }
 
   /**

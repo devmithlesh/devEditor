@@ -37,6 +37,7 @@ export class EditorEngine {
     this._handleInput = this._onInput.bind(this)
     this._handlePaste = this._onPaste.bind(this)
     this._handleSelectionChange = this._onSelectionChange.bind(this)
+    this._handleClick = this._onClick.bind(this)
   }
 
   // ─── Lifecycle ───
@@ -56,6 +57,7 @@ export class EditorEngine {
     containerEl.addEventListener('compositionend', this._handleCompositionEnd)
     containerEl.addEventListener('input', this._handleInput)
     containerEl.addEventListener('paste', this._handlePaste)
+    containerEl.addEventListener('click', this._handleClick, true) // Use capture phase
     document.addEventListener('selectionchange', this._handleSelectionChange)
   }
 
@@ -68,6 +70,7 @@ export class EditorEngine {
     this._container.removeEventListener('compositionend', this._handleCompositionEnd)
     this._container.removeEventListener('input', this._handleInput)
     this._container.removeEventListener('paste', this._handlePaste)
+    this._container.removeEventListener('click', this._handleClick, true)
     document.removeEventListener('selectionchange', this._handleSelectionChange)
     this._container = null
   }
@@ -296,6 +299,46 @@ export class EditorEngine {
   }
 
   /** @private */
+  _onClick(e) {
+    // Handle link clicks - allow navigation
+    const target = e.target
+    const link = target.tagName === 'A' ? target : target.closest('a')
+    
+    if (link && link.tagName === 'A') {
+      const href = link.getAttribute('href')
+      
+      // Only allow navigation if href is valid and not just '#'
+      if (href && href !== '#' && !href.startsWith('javascript:')) {
+        // For Ctrl/Cmd+Click or middle mouse button, allow default (opens in new tab)
+        if (e.ctrlKey || e.metaKey || e.button === 1) {
+          return // Let browser handle it
+        }
+        
+        // For regular click, navigate to the link
+        // We need to allow the default behavior, but contentEditable might interfere
+        // So we manually navigate
+        e.preventDefault()
+        e.stopPropagation()
+        
+        // Navigate to the link
+        if (link.target === '_blank') {
+          window.open(href, '_blank', 'noopener,noreferrer')
+        } else {
+          window.location.href = href
+        }
+        
+        return
+      }
+      
+      // For invalid links or #, allow editing (don't prevent default)
+      // The contentEditable will handle selection
+    }
+    
+    // For non-link clicks, allow normal contentEditable behavior
+    // Don't prevent default - let selection and editing work normally
+  }
+
+  /** @private */
   _onInput(e) {
     // For cases not caught by beforeinput (e.g., mobile browsers, IME)
     if (this._isComposing || this._isReconciling) return
@@ -311,6 +354,11 @@ export class EditorEngine {
   /** @private */
   _onPaste(e) {
     e.preventDefault()
+    e.stopPropagation()
+    
+    // Capture selection before paste
+    this._selection?.captureSelection()
+    
     const html = e.clipboardData?.getData('text/html')
     const text = e.clipboardData?.getData('text/plain')
 
@@ -338,7 +386,11 @@ export class EditorEngine {
 
   // ─── Text Input Handling ───
 
-  /** @private */
+  /**
+   * Insert text at the current cursor position.
+   * Public method for plugins and external use.
+   * @param {string} text
+   */
   _handleInsertText(text) {
     const sel = this._selection.captureSelection()
     if (!sel) return
@@ -434,7 +486,7 @@ export class EditorEngine {
     const currentSel = this._selection.getSavedSelection()
 
     // Find the block containing the cursor
-    const blockInfo = this._findBlockForTextNode(currentSel.anchorNodeId)
+    const blockInfo = this.findBlockForTextNode(currentSel.anchorNodeId)
     if (!blockInfo) return
 
     if (this._historyManager) {
@@ -506,7 +558,7 @@ export class EditorEngine {
       this._bumpVersion()
     } else {
       // At the start of a text node (offset === 0)
-      const blockInfo = this._findBlockForTextNode(nodeId)
+      const blockInfo = this.findBlockForTextNode(nodeId)
       if (!blockInfo) return
 
       // Check if this is the first text node in the block
@@ -756,7 +808,7 @@ export class EditorEngine {
 
   /**
    * Reconcile the document model into the contentEditable DOM.
-   * @private
+   * Public method for external reconciliation needs.
    */
   _reconcile() {
     if (!this._container) return
@@ -792,11 +844,18 @@ export class EditorEngine {
         return this._renderBlock('blockquote', node)
       case 'codeBlock':
         return `<pre ${NODE_ID_ATTR}="${node.id}"><code>${this._renderChildren(node)}</code></pre>`
-      case 'bulletList':
-        return this._renderBlock('ul', node)
-      case 'orderedList':
-        return this._renderBlock('ol', node)
+      case 'bulletList': {
+        const style = node.attrs?.listStyleType
+        const styleAttr = style ? ` style="list-style-type: ${style}"` : ''
+        return `<ul ${NODE_ID_ATTR}="${node.id}"${styleAttr}>${this._renderChildren(node)}</ul>`
+      }
+      case 'orderedList': {
+        const style = node.attrs?.listStyleType
+        const styleAttr = style ? ` style="list-style-type: ${style}"` : ''
+        return `<ol ${NODE_ID_ATTR}="${node.id}"${styleAttr}>${this._renderChildren(node)}</ol>`
+      }
       case 'listItem':
+        // Render listItem - alignment is handled by the paragraph block inside
         return this._renderBlock('li', node)
       case 'horizontalRule':
         return `<hr ${NODE_ID_ATTR}="${node.id}"/>`
@@ -867,7 +926,11 @@ export class EditorEngine {
   /** @private */
   _renderBlock(tag, node) {
     const styles = []
-    if (node.attrs?.textAlign) styles.push(`text-align: ${node.attrs.textAlign}`)
+    // For listItem, don't apply textAlign (alignment is on the paragraph block inside)
+    // For other blocks, apply textAlign normally
+    if (tag !== 'li' && node.attrs?.textAlign) {
+      styles.push(`text-align: ${node.attrs.textAlign}`)
+    }
     if (node.attrs?.indent && node.attrs.indent > 0) styles.push(`margin-left: ${node.attrs.indent * 2}em`)
     const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : ''
     const dirAttr = node.attrs?.dir ? ` dir="${node.attrs.dir}"` : ''
@@ -1136,8 +1199,12 @@ export class EditorEngine {
 
   // ─── Helpers ───
 
-  /** @private */
-  _findBlockForTextNode(textNodeId) {
+  /**
+   * Find the block node containing a text node.
+   * @param {string} textNodeId
+   * @returns {Object|null}
+   */
+  findBlockForTextNode(textNodeId) {
     let found = null
     walkTree(this._model.doc, (node, parent) => {
       if (node.type !== 'text' && node.content) {
@@ -1149,6 +1216,14 @@ export class EditorEngine {
       }
     })
     return found
+  }
+
+  /**
+   * @private
+   * @deprecated Use findBlockForTextNode instead
+   */
+  _findBlockForTextNode(textNodeId) {
+    return this.findBlockForTextNode(textNodeId)
   }
 
   /** @private */

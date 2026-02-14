@@ -82,6 +82,14 @@ export class CommandRegistry {
     const commandName = this._shortcuts.get(combo)
 
     if (commandName) {
+      // For paste command, don't prevent default - let native paste event fire
+      // The paste event handler will process it
+      if (commandName === 'paste') {
+        // Don't prevent default, let the native paste event fire
+        // The _onPaste handler will catch it
+        return false
+      }
+      
       e.preventDefault()
       e.stopPropagation()
       this.execute(commandName)

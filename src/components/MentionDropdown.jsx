@@ -27,7 +27,6 @@ export function MentionDropdown() {
   const [position, setPosition] = useState({ top: 0, left: 0 })
   const [selectedIndex, setSelectedIndex] = useState(0)
   const dropdownRef = useRef(null)
-  const mentionStartRef = useRef(null)
 
   // Get users from engine config or use defaults
   const users = engine._mentionUsers || DEFAULT_USERS
@@ -35,59 +34,6 @@ export function MentionDropdown() {
   const filtered = query
     ? users.filter((u) => u.name.toLowerCase().includes(query.toLowerCase()) || u.id.toLowerCase().includes(query.toLowerCase()))
     : users
-
-  // Listen for mention state changes on the engine
-  useEffect(() => {
-    const checkMentionState = () => {
-      const state = engine._mentionState
-      if (state && state.isActive) {
-        setIsOpen(true)
-        setQuery(state.query)
-        setSelectedIndex(0)
-
-        // Position near cursor
-        const sel = window.getSelection()
-        if (sel && sel.rangeCount > 0) {
-          const range = sel.getRangeAt(0)
-          const rect = range.getBoundingClientRect()
-          setPosition({
-            top: rect.bottom + 4,
-            left: rect.left,
-          })
-        }
-      } else {
-        setIsOpen(false)
-        setQuery('')
-      }
-    }
-
-    checkMentionState()
-  }, [engine, version])
-
-  // Keyboard navigation
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setSelectedIndex((prev) => Math.min(prev + 1, filtered.length - 1))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setSelectedIndex((prev) => Math.max(prev - 1, 0))
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        if (filtered[selectedIndex]) {
-          selectMention(filtered[selectedIndex])
-        }
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        engine._mentionState = null
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('keydown', handler, true)
-    return () => document.removeEventListener('keydown', handler, true)
-  }, [isOpen, filtered, selectedIndex, engine])
 
   const selectMention = useCallback((user) => {
     if (!engine._mentionState) return
@@ -159,6 +105,85 @@ export function MentionDropdown() {
     setIsOpen(false)
   }, [engine])
 
+  // Listen for mention state changes on the engine
+  useEffect(() => {
+    const checkMentionState = () => {
+      const state = engine._mentionState
+      if (state && state.isActive) {
+        setIsOpen(true)
+        setQuery(state.query)
+        setSelectedIndex(0)
+
+        // Position near cursor
+        const sel = window.getSelection()
+        if (sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0)
+          const rect = range.getBoundingClientRect()
+          setPosition({
+            top: rect.bottom + 4,
+            left: rect.left,
+          })
+        }
+      } else {
+        setIsOpen(false)
+        setQuery('')
+      }
+    }
+
+    checkMentionState()
+  }, [engine, version])
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedIndex((prev) => {
+          const newIndex = Math.min(prev + 1, filtered.length - 1)
+          // Scroll selected item into view
+          setTimeout(() => {
+            const dropdown = dropdownRef.current
+            if (dropdown) {
+              const selectedItem = dropdown.children[newIndex]
+              if (selectedItem) {
+                selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+              }
+            }
+          }, 0)
+          return newIndex
+        })
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedIndex((prev) => {
+          const newIndex = Math.max(prev - 1, 0)
+          // Scroll selected item into view
+          setTimeout(() => {
+            const dropdown = dropdownRef.current
+            if (dropdown) {
+              const selectedItem = dropdown.children[newIndex]
+              if (selectedItem) {
+                selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+              }
+            }
+          }, 0)
+          return newIndex
+        })
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (filtered[selectedIndex]) {
+          selectMention(filtered[selectedIndex])
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        engine._mentionState = null
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handler, true)
+    return () => document.removeEventListener('keydown', handler, true)
+  }, [isOpen, filtered, selectedIndex, engine, selectMention])
+
   if (!isOpen || filtered.length === 0) return null
 
   return createPortal(
@@ -170,24 +195,37 @@ export function MentionDropdown() {
         top: `${position.top}px`,
         left: `${position.left}px`,
         zIndex: 10002,
+        maxHeight: '160px',
+        overflowY: 'auto',
+        overflowX: 'hidden',
       }}
     >
-      {filtered.slice(0, 8).map((user, i) => (
-        <button
-          key={user.id}
-          type="button"
-          className={`de-mention-item${i === selectedIndex ? ' de-mention-item--selected' : ''}`}
-          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation() }}
-          onClick={() => selectMention(user)}
-          onMouseEnter={() => setSelectedIndex(i)}
-        >
-          <span className="de-mention-avatar">
-            {user.avatar || user.name.charAt(0).toUpperCase()}
-          </span>
-          <span className="de-mention-name">{user.name}</span>
-          <span className="de-mention-id">@{user.id}</span>
-        </button>
-      ))}
+      {filtered.map((user, i) => {
+        // Get initials from name (first letter of first and last name)
+        const nameParts = user.name.split(' ')
+        const initials = nameParts.length >= 2
+          ? (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase()
+          : user.name.charAt(0).toUpperCase()
+        
+        return (
+          <button
+            key={user.id}
+            type="button"
+            className={`de-mention-item${i === selectedIndex ? ' de-mention-item--selected' : ''}`}
+            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation() }}
+            onClick={() => selectMention(user)}
+            onMouseEnter={() => setSelectedIndex(i)}
+          >
+            <span className="de-mention-avatar">
+              {user.avatar || initials}
+            </span>
+            <div className="de-mention-content">
+              <span className="de-mention-name">{user.name}</span>
+              <span className="de-mention-id">@{user.id}</span>
+            </div>
+          </button>
+        )
+      })}
     </div>,
     document.body
   )

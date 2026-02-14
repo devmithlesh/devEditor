@@ -9,9 +9,13 @@ import { ToolbarPopupButton } from './ToolbarPopupButton.jsx'
 import { ToolbarStepper } from './ToolbarStepper.jsx'
 
 /**
- * @param {{ buttons: Array<import('../types/plugin.types.js').ToolbarButtonDef> }} props
+ * @param {{ 
+ *   buttons: Array<import('../types/plugin.types.js').ToolbarButtonDef>,
+ *   openDropdownId: string | null,
+ *   onDropdownToggle: (id: string | null) => void
+ * }} props
  */
-export function ToolbarGroup({ buttons }) {
+export function ToolbarGroup({ buttons, openDropdownId, onDropdownToggle }) {
   return (
     <div className="de-toolbar-group">
       {buttons.map((button) => {
@@ -22,7 +26,14 @@ export function ToolbarGroup({ buttons }) {
           return <ToolbarPopupButton key={button.name} button={{ ...button, popupType: 'colorpicker' }} />
         }
         if (button.type === 'dropdown') {
-          return <ToolbarDropdown key={button.name} button={button} />
+          return (
+            <ToolbarDropdown 
+              key={button.name} 
+              button={button}
+              openDropdownId={openDropdownId}
+              onDropdownToggle={onDropdownToggle}
+            />
+          )
         }
         if (button.type === 'stepper') {
           return <ToolbarStepper key={button.name} button={button} />
