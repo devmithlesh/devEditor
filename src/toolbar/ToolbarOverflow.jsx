@@ -130,7 +130,14 @@ export function ToolbarOverflow({ groups }) {
   const handleOverflowMouseDown = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
-    setShowPopup((prev) => !prev)
+    setShowPopup((prev) => {
+      const newState = !prev
+      // Close any open dropdowns when opening overflow popup
+      if (newState) {
+        setOpenDropdownId(null)
+      }
+      return newState
+    })
   }, [])
 
   const visibleGroups = overflowIndex === -1 ? groups : groups.slice(0, Math.max(1, overflowIndex))
@@ -169,7 +176,7 @@ export function ToolbarOverflow({ groups }) {
                   key={i} 
                   buttons={group}
                   openDropdownId={openDropdownId}
-                  onDropdownToggle={setOpenDropdownId}
+                  onDropdownToggle={handleDropdownToggle}
                 />
               ))}
             </div>

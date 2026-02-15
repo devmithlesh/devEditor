@@ -23,14 +23,6 @@ function App() {
 
   return (
     <div className="demo-container">
-      <header className="demo-header">
-        <h1>DevEditor</h1>
-        <p>A modern React rich text editor — built from scratch</p>
-        <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
-          💡 Try typing <strong>@</strong> to mention someone!
-        </p>
-      </header>
-
       <main className="demo-main">
         <Editor
           ref={editorRef}
@@ -43,8 +35,8 @@ function App() {
               mentionPlugin(), // Enable @mention feature
             ],
             toolbar: [
-              'formatselect fontfamily fontsize | undo redo | bold italic underline strikethrough | forecolor backcolor',
-              'alignment | bullist numlist | outdent indent | link image table | searchreplace charmap emoticons | fullscreen preview print sourceview | removeformat',
+              'formatselect  fontsize | undo redo | bold italic underline strikethrough | forecolor backcolor',
+              'alignment | bullist numlist | link image table | searchreplace charmap emoticons | fullscreen preview print sourceview | removeformat',
             ].join(' | '),
             statusbar: true,
             wordcount: true,
@@ -52,7 +44,7 @@ function App() {
             resize: true,
             browser_spellcheck: true,
             contextmenu: true,
-            placeholder: 'Start typing... Try typing @ to mention someone!',
+            placeholder: 'Start typing...',
             content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; line-height: 1.7; }',
           }}
           onEditorChange={(content) => {
