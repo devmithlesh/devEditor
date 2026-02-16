@@ -133,7 +133,22 @@ export class SelectionManager {
 
     // Find the closest ancestor with a data-node-id
     const nodeEl = getClosestNodeElement(domNode)
-    if (!nodeEl) return null
+    if (!nodeEl) {
+      // Handle container-level selection (e.g. Ctrl+A selects the whole contentEditable)
+      if (domNode === this._container || this._container.contains(domNode)) {
+        // Find only leaf-level nodes (text nodes in the model — no nested data-node-id children)
+        const allNodeEls = Array.from(this._container.querySelectorAll('[data-node-id]'))
+        const leafEls = allNodeEls.filter(el => !el.querySelector('[data-node-id]'))
+        if (leafEls.length === 0) return null
+        if (domOffset === 0) {
+          return { nodeId: leafEls[0].getAttribute('data-node-id'), offset: 0 }
+        } else {
+          const lastEl = leafEls[leafEls.length - 1]
+          return { nodeId: lastEl.getAttribute('data-node-id'), offset: lastEl.textContent?.length || 0 }
+        }
+      }
+      return null
+    }
 
     const nodeId = getNodeIdFromElement(nodeEl)
     if (!nodeId) return null

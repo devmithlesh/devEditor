@@ -20,13 +20,8 @@ export function getDefaultMenuItems() {
   return {
     file: [
       { label: 'New document', command: 'newDocument' },
-      { type: 'separator' },
-      { label: 'Print...', command: 'print', shortcutLabel: 'Ctrl+P' },
     ],
     edit: [
-      { label: 'Undo', command: 'undo', shortcutLabel: 'Ctrl+Z' },
-      { label: 'Redo', command: 'redo', shortcutLabel: 'Ctrl+Y' },
-      { type: 'separator' },
       { label: 'Cut', command: 'cut', shortcutLabel: 'Ctrl+X' },
       { label: 'Copy', command: 'copy', shortcutLabel: 'Ctrl+C' },
       { label: 'Paste', command: 'paste', shortcutLabel: 'Ctrl+V' },
@@ -34,22 +29,14 @@ export function getDefaultMenuItems() {
       { label: 'Select all', command: 'selectAll', shortcutLabel: 'Ctrl+A' },
     ],
     view: [
-      { label: 'Source code', command: 'sourceView' },
       { label: 'Word count', command: 'wordCount' },
     ],
     insert: [
-      { label: 'Image...', command: 'insertImage' },
-      { label: 'Link...', command: 'link', shortcutLabel: 'Ctrl+K' },
-      { type: 'separator' },
       { label: 'Horizontal rule', command: 'insertHorizontalRule' },
-      { label: 'Table...', command: 'insertTable' },
-      { type: 'separator' },
-      { label: 'Code block', command: 'insertCodeBlock' },
     ],
     format: [],  // Populated by plugins
     tools: [
       { label: 'Word count', command: 'wordCount' },
-      { label: 'Source code', command: 'sourceView' },
     ],
     table: [],  // Populated by table plugin
     help: [

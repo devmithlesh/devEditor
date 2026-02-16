@@ -29,6 +29,11 @@ export class EditorEngine {
     // Pending marks for type-ahead formatting (e.g., press Ctrl+B then type bold text)
     this._pendingMarks = []
 
+    // Element selection (for images, tables — distinct from text cursor selection)
+    this._selectedElementId = null
+    this._selectedElementType = null // 'image' | 'table' | null
+    this._isResizing = false
+
     // Event handler references (for cleanup)
     this._handleBeforeInput = this._onBeforeInput.bind(this)
     this._handleKeyDown = this._onKeyDown.bind(this)
@@ -143,6 +148,69 @@ export class EditorEngine {
   /** Clear all pending marks. */
   clearPendingMarks() {
     this._pendingMarks = []
+  }
+
+  // ─── Element Selection (images, tables) ───
+
+  getSelectedElement() {
+    return { id: this._selectedElementId, type: this._selectedElementType }
+  }
+
+  setSelectedElement(nodeId, type) {
+    this._selectedElementId = nodeId
+    this._selectedElementType = type
+    this._applyElementSelection()
+    this._bumpVersion()
+  }
+
+  clearSelectedElement() {
+    if (!this._selectedElementId) return
+    this._selectedElementId = null
+    this._selectedElementType = null
+    this._applyElementSelection()
+    this._bumpVersion()
+  }
+
+  /** @private — apply/remove selection CSS class after reconcile */
+  _applyElementSelection() {
+    if (!this._container) return
+    this._container.querySelectorAll('.de-element--selected').forEach(el => {
+      el.classList.remove('de-element--selected')
+    })
+    if (this._selectedElementId) {
+      const el = this._container.querySelector(`[${NODE_ID_ATTR}="${this._selectedElementId}"]`)
+      if (el) el.classList.add('de-element--selected')
+    }
+  }
+
+  /** @private — delete the currently selected element (image/table) */
+  _deleteSelectedElement() {
+    const nodeId = this._selectedElementId
+    if (!nodeId) return false
+
+    const parentInfo = findParent(this._model.doc, nodeId)
+    if (!parentInfo) return false
+
+    if (this._historyManager) {
+      this._historyManager.push(this._model.getDoc(), this._selection?.getSavedSelection())
+    }
+
+    // Remove the node from its parent
+    parentInfo.parent.content.splice(parentInfo.index, 1)
+
+    this._selectedElementId = null
+    this._selectedElementType = null
+    this._model._ensureMinimumContent()
+    this._reconcile()
+
+    // Place cursor in nearest text node
+    const allText = getTextNodes(this._model.doc)
+    if (allText.length > 0) {
+      const target = allText[Math.min(parentInfo.index, allText.length - 1)]
+      this._selection.setCursorToNode(target.id, 0)
+    }
+    this._bumpVersion()
+    return true
   }
 
   // ─── Content API ───
@@ -278,6 +346,13 @@ export class EditorEngine {
 
   /** @private */
   _onKeyDown(e) {
+    // Escape clears element selection
+    if (e.key === 'Escape' && this._selectedElementId) {
+      e.preventDefault()
+      this.clearSelectedElement()
+      return
+    }
+
     // Delegate to command registry for keyboard shortcuts
     if (this._commandRegistry) {
       const handled = this._commandRegistry.handleKeyDown(e)
@@ -309,42 +384,60 @@ export class EditorEngine {
 
   /** @private */
   _onClick(e) {
-    // Handle link clicks - allow navigation
     const target = e.target
+
+    // Check if clicked on an image
+    if (target.tagName === 'IMG' && target.getAttribute(NODE_ID_ATTR)) {
+      e.preventDefault()
+      e.stopPropagation()
+      const nodeId = target.getAttribute(NODE_ID_ATTR)
+      this.setSelectedElement(nodeId, 'image')
+      return
+    }
+
+    // Check if clicked on a table element (on the table itself, not inside a cell)
+    const tableEl = target.closest('table[' + NODE_ID_ATTR + ']')
+    const cellEl = target.closest('td[' + NODE_ID_ATTR + '], th[' + NODE_ID_ATTR + ']')
+    if (tableEl && !cellEl) {
+      // Clicked on table border/padding, not inside a cell
+      e.preventDefault()
+      e.stopPropagation()
+      const nodeId = tableEl.getAttribute(NODE_ID_ATTR)
+      this.setSelectedElement(nodeId, 'table')
+      return
+    }
+
+    // Clear element selection when clicking elsewhere
+    if (this._selectedElementId) {
+      this.clearSelectedElement()
+    }
+
+    // Handle link clicks - allow navigation
     const link = target.tagName === 'A' ? target : target.closest('a')
-    
+
     if (link && link.tagName === 'A') {
       const href = link.getAttribute('href')
-      
+
       // Only allow navigation if href is valid and not just '#'
       if (href && href !== '#' && !href.startsWith('javascript:')) {
         // For Ctrl/Cmd+Click or middle mouse button, allow default (opens in new tab)
         if (e.ctrlKey || e.metaKey || e.button === 1) {
           return // Let browser handle it
         }
-        
+
         // For regular click, navigate to the link
-        // We need to allow the default behavior, but contentEditable might interfere
-        // So we manually navigate
         e.preventDefault()
         e.stopPropagation()
-        
-        // Navigate to the link
+
         if (link.target === '_blank') {
           window.open(href, '_blank', 'noopener,noreferrer')
         } else {
           window.location.href = href
         }
-        
+
         return
       }
-      
-      // For invalid links or #, allow editing (don't prevent default)
-      // The contentEditable will handle selection
     }
-    
-    // For non-link clicks, allow normal contentEditable behavior
-    // Don't prevent default - let selection and editing work normally
   }
 
   /** @private */
@@ -542,6 +635,12 @@ export class EditorEngine {
 
   /** @private */
   _handleBackspace() {
+    // If an element (image/table) is selected, delete it
+    if (this._selectedElementId) {
+      this._deleteSelectedElement()
+      return
+    }
+
     const sel = this._selection.captureSelection()
     if (!sel) return
 
@@ -824,6 +923,12 @@ export class EditorEngine {
 
   /** @private */
   _handleDelete() {
+    // If an element (image/table) is selected, delete it
+    if (this._selectedElementId) {
+      this._deleteSelectedElement()
+      return
+    }
+
     const sel = this._selection.captureSelection()
     if (!sel) return
 
@@ -1254,6 +1359,7 @@ export class EditorEngine {
    */
   _reconcile() {
     if (!this._container) return
+    if (this._isResizing) return // Don't reconcile during active resize drag
     this._isReconciling = true
 
     try {
@@ -1262,6 +1368,8 @@ export class EditorEngine {
     } finally {
       this._isReconciling = false
     }
+    // Re-apply element selection visual after DOM rebuild
+    this._applyElementSelection()
   }
 
   /**
@@ -1301,12 +1409,33 @@ export class EditorEngine {
         return this._renderBlock('li', node)
       case 'horizontalRule':
         return `<hr ${NODE_ID_ATTR}="${node.id}"/>`
-      case 'image':
-        return `<img ${NODE_ID_ATTR}="${node.id}" src="${this._escapeAttr(node.attrs?.src || '')}" alt="${this._escapeAttr(node.attrs?.alt || '')}"/>`
-      case 'table':
-        return this._renderBlock('table', node)
-      case 'tableRow':
-        return this._renderBlock('tr', node)
+      case 'image': {
+        const imgStyles = []
+        if (node.attrs?.width) imgStyles.push(`width: ${node.attrs.width}px`)
+        if (node.attrs?.height) imgStyles.push(`height: ${node.attrs.height}px`)
+        if (imgStyles.length > 0) imgStyles.push('max-width: 100%')
+        const imgStyle = imgStyles.length > 0 ? ` style="${imgStyles.join('; ')}"` : ''
+        return `<img ${NODE_ID_ATTR}="${node.id}" src="${this._escapeAttr(node.attrs?.src || '')}" alt="${this._escapeAttr(node.attrs?.alt || '')}"${imgStyle}/>`
+      }
+      case 'table': {
+        const tStyles = []
+        if (node.attrs?.width) tStyles.push(`width: ${node.attrs.width}`)
+        else tStyles.push('width: 100%')
+        if (node.attrs?.colWidths) tStyles.push('table-layout: fixed')
+        const tStyleAttr = ` style="${tStyles.join('; ')}"`
+        // Build colgroup if colWidths are set
+        let colgroup = ''
+        if (node.attrs?.colWidths && Array.isArray(node.attrs.colWidths)) {
+          colgroup = '<colgroup>' + node.attrs.colWidths.map(w => `<col style="width: ${w}%">`).join('') + '</colgroup>'
+        }
+        return `<table ${NODE_ID_ATTR}="${node.id}"${tStyleAttr}>${colgroup}${this._renderChildren(node)}</table>`
+      }
+      case 'tableRow': {
+        const rowStyles = []
+        if (node.attrs?.height) rowStyles.push(`height: ${node.attrs.height}px`)
+        const rowStyleAttr = rowStyles.length > 0 ? ` style="${rowStyles.join('; ')}"` : ''
+        return `<tr ${NODE_ID_ATTR}="${node.id}"${rowStyleAttr}>${this._renderChildren(node)}</tr>`
+      }
       case 'tableCell': {
         // Hidden cells are absorbed by a merged cell — skip rendering
         if (node.attrs?.hidden) return ''
@@ -1495,7 +1624,14 @@ export class EditorEngine {
 
     if (tag === 'br') return { id: generateId(), type: 'hardBreak' }
     if (tag === 'hr') return { id: generateId(), type: 'horizontalRule' }
-    if (tag === 'img') return { id: generateId(), type: 'image', attrs: { src: domNode.getAttribute('src') || '', alt: domNode.getAttribute('alt') || '' } }
+    if (tag === 'img') {
+      const imgAttrs = { src: domNode.getAttribute('src') || '', alt: domNode.getAttribute('alt') || '' }
+      const imgW = domNode.getAttribute('width')
+      const imgH = domNode.getAttribute('height')
+      if (imgW) imgAttrs.width = parseInt(imgW, 10)
+      if (imgH) imgAttrs.height = parseInt(imgH, 10)
+      return { id: generateId(), type: 'image', attrs: imgAttrs }
+    }
 
     // Div or unknown block → treat as paragraph
     if (['div', 'section', 'article'].includes(tag)) {
@@ -1539,7 +1675,11 @@ export class EditorEngine {
       case 'orderedList': return `<ol>${this._serializeChildren(node)}</ol>`
       case 'listItem': return `<li>${this._serializeChildren(node)}</li>`
       case 'horizontalRule': return '<hr/>'
-      case 'image': return `<img src="${this._escapeAttr(node.attrs?.src || '')}" alt="${this._escapeAttr(node.attrs?.alt || '')}"/>`
+      case 'image': {
+        const w = node.attrs?.width ? ` width="${node.attrs.width}"` : ''
+        const h = node.attrs?.height ? ` height="${node.attrs.height}"` : ''
+        return `<img src="${this._escapeAttr(node.attrs?.src || '')}" alt="${this._escapeAttr(node.attrs?.alt || '')}"${w}${h}/>`
+      }
       case 'table': return `<table>${this._serializeChildren(node)}</table>`
       case 'tableRow': return `<tr>${this._serializeChildren(node)}</tr>`
       case 'tableCell': {
@@ -1590,6 +1730,8 @@ export class EditorEngine {
 
   undo() {
     if (!this._historyManager) return
+    this._selectedElementId = null
+    this._selectedElementType = null
     const entry = this._historyManager.undo(this._model.getDoc(), this._selection?.getSavedSelection())
     if (entry) {
       this._model.setDoc(entry.doc)
@@ -1604,6 +1746,8 @@ export class EditorEngine {
 
   redo() {
     if (!this._historyManager) return
+    this._selectedElementId = null
+    this._selectedElementType = null
     const entry = this._historyManager.redo(this._model.getDoc(), this._selection?.getSavedSelection())
     if (entry) {
       this._model.setDoc(entry.doc)

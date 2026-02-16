@@ -39,7 +39,6 @@ export function sourceViewPlugin() {
         },
       },
     },
-    menuItems: { view: [{ label: 'Source Code', command: 'sourceView' }] },
     css: `.de-source-textarea { width: 100%; min-height: 300px; padding: 16px; font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 13px; line-height: 1.5; border: none; outline: none; resize: vertical; background: #1e1e2e; color: #cdd6f4; box-sizing: border-box; }`,
   }
 }

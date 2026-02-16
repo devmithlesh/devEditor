@@ -27,6 +27,5 @@ export function backColorPlugin() {
         isActive: (engine) => isMarkActive(engine, 'backColor'),
       },
     },
-    menuItems: { format: [{ label: 'Background Color...', command: 'backColor' }] },
   }
 }

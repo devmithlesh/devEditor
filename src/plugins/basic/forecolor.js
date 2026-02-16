@@ -27,6 +27,5 @@ export function foreColorPlugin() {
         isActive: (engine) => isMarkActive(engine, 'foreColor'),
       },
     },
-    menuItems: { format: [{ label: 'Text Color...', command: 'foreColor' }] },
   }
 }

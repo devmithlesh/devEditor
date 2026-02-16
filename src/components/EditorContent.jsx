@@ -3,16 +3,17 @@
  * Attaches the EditorEngine to a real DOM element.
  */
 
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, forwardRef } from 'react'
 import { useEditorEngine, useEditorVersion } from '../core/EditorContext.jsx'
 
 /**
  * @param {{ style?: Object, onBlur?: function, placeholder?: string, spellCheck?: boolean }} props
  */
-export function EditorContent({ style, onBlur, placeholder, spellCheck = true }) {
+export const EditorContent = forwardRef(function EditorContent({ style, onBlur, placeholder, spellCheck = true }, externalRef) {
   const engine = useEditorEngine()
   const version = useEditorVersion() // Re-render when content changes
-  const contentRef = useRef(null)
+  const internalRef = useRef(null)
+  const contentRef = externalRef || internalRef
   const [isFocused, setIsFocused] = useState(false)
   const [isEmpty, setIsEmpty] = useState(true)
 
@@ -93,4 +94,4 @@ export function EditorContent({ style, onBlur, placeholder, spellCheck = true })
       spellCheck={spellCheck}
     />
   )
-}
+})

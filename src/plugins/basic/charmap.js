@@ -55,7 +55,6 @@ export function charmapPlugin() {
         popupType: 'charmap',
       },
     },
-    menuItems: { insert: [{ label: 'Special Character...', command: 'charmap' }] },
     css: `.de-charmap-popup .de-charmap-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; padding: 12px; max-height: 300px; overflow-y: auto; }
 .de-charmap-popup .de-charmap-char { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 4px; background: none; font-size: 18px; cursor: pointer; padding: 0; }
 .de-charmap-popup .de-charmap-char:hover { background: #dbeafe; border-color: #93c5fd; }`,

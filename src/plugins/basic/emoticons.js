@@ -20,6 +20,5 @@ export function emoticonsPlugin() {
         popupType: 'emoticons',
       },
     },
-    menuItems: { insert: [{ label: 'Emoticons...', command: 'emoticons' }] },
   }
 }

@@ -426,7 +426,9 @@ export function tablePlugin() {
 
           pushHistory(engine)
 
-          const tableNode = { id: generateId(), type: 'table', content: [] }
+          const equalWidth = Math.round(10000 / cols) / 100 // e.g. 33.33 for 3 cols
+          const colWidths = Array.from({ length: cols }, () => equalWidth)
+          const tableNode = { id: generateId(), type: 'table', attrs: { colWidths }, content: [] }
           for (let r = 0; r < rows; r++) {
             tableNode.content.push(createEmptyRow(cols, r === 0))
           }
@@ -541,6 +543,11 @@ export function tablePlugin() {
             const isHeader = row.content[0]?.attrs?.header || false
             row.content.splice(colIdx, 0, createEmptyCell(isHeader))
           }
+          // Recalculate colWidths
+          if (table.attrs?.colWidths) {
+            const newCols = table.content[0]?.content?.length || table.attrs.colWidths.length + 1
+            table.attrs.colWidths = Array.from({ length: newCols }, () => Math.round(10000 / newCols) / 100)
+          }
           engine._reconcile()
           engine._bumpVersion()
         },
@@ -557,6 +564,11 @@ export function tablePlugin() {
           for (const row of table.content) {
             const isHeader = row.content[0]?.attrs?.header || false
             row.content.splice(colIdx + 1, 0, createEmptyCell(isHeader))
+          }
+          // Recalculate colWidths
+          if (table.attrs?.colWidths) {
+            const newCols = table.content[0]?.content?.length || table.attrs.colWidths.length + 1
+            table.attrs.colWidths = Array.from({ length: newCols }, () => Math.round(10000 / newCols) / 100)
           }
           engine._reconcile()
           engine._bumpVersion()
@@ -583,6 +595,10 @@ export function tablePlugin() {
           pushHistory(engine)
           for (const row of table.content) {
             row.content.splice(colIdx, 1)
+          }
+          if (table.attrs?.colWidths) {
+            const newCols = table.content[0]?.content?.length || table.attrs.colWidths.length - 1
+            table.attrs.colWidths = Array.from({ length: newCols }, () => Math.round(10000 / newCols) / 100)
           }
           engine._reconcile()
           engine._bumpVersion()
@@ -763,6 +779,10 @@ export function tablePlugin() {
           for (const row of table.content) {
             row.content.splice(colIdx, 1)
           }
+          if (table.attrs?.colWidths) {
+            const newCols = table.content[0]?.content?.length || table.attrs.colWidths.length - 1
+            table.attrs.colWidths = Array.from({ length: newCols }, () => Math.round(10000 / newCols) / 100)
+          }
           engine._reconcile()
           engine._bumpVersion()
         },
@@ -793,6 +813,10 @@ export function tablePlugin() {
             regenerateIds(cellData)
             table.content[r].content.splice(colIdx, 0, cellData)
           }
+          if (table.attrs?.colWidths) {
+            const newCols = table.content[0]?.content?.length || table.attrs.colWidths.length + 1
+            table.attrs.colWidths = Array.from({ length: newCols }, () => Math.round(10000 / newCols) / 100)
+          }
           engine._reconcile()
           engine._bumpVersion()
         },
@@ -811,6 +835,10 @@ export function tablePlugin() {
             const cellData = _clipboardCol[r] ? deepClone(_clipboardCol[r]) : createEmptyCell()
             regenerateIds(cellData)
             table.content[r].content.splice(colIdx + 1, 0, cellData)
+          }
+          if (table.attrs?.colWidths) {
+            const newCols = table.content[0]?.content?.length || table.attrs.colWidths.length + 1
+            table.attrs.colWidths = Array.from({ length: newCols }, () => Math.round(10000 / newCols) / 100)
           }
           engine._reconcile()
           engine._bumpVersion()

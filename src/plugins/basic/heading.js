@@ -208,18 +208,9 @@ export function headingPlugin() {
           { label: 'Heading 5', value: 'heading5' },
           { label: 'Heading 6', value: 'heading6' },
           { label: 'Blockquote', value: 'blockquote' },
-          { label: 'Code Block', value: 'codeBlock' },
         ],
       },
     ],
 
-    menuItems: [
-      { menu: 'format', label: 'Heading 1', command: 'formatBlock', commandArgs: ['heading1'] },
-      { menu: 'format', label: 'Heading 2', command: 'formatBlock', commandArgs: ['heading2'] },
-      { menu: 'format', label: 'Heading 3', command: 'formatBlock', commandArgs: ['heading3'] },
-      { menu: 'format', type: 'separator' },
-      { menu: 'format', label: 'Paragraph', command: 'formatBlock', commandArgs: ['paragraph'] },
-      { menu: 'format', label: 'Blockquote', command: 'formatBlock', commandArgs: ['blockquote'] },
-    ],
   }
 }

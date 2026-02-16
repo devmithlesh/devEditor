@@ -42,11 +42,6 @@ export function undoRedoPlugin() {
       },
     ],
 
-    menuItems: [
-      { menu: 'edit', label: 'Undo', command: 'undo', shortcutLabel: 'Ctrl+Z' },
-      { menu: 'edit', label: 'Redo', command: 'redo', shortcutLabel: 'Ctrl+Y' },
-    ],
-
     shortcuts: [
       { combo: 'ctrl+z', command: 'undo' },
       { combo: 'ctrl+y', command: 'redo' },

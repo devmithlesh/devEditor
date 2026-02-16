@@ -46,12 +46,6 @@ export function alignmentPlugin() {
       },
     ],
 
-    menuItems: [
-      { menu: 'format', label: 'Align left', command: 'alignLeft' },
-      { menu: 'format', label: 'Align center', command: 'alignCenter' },
-      { menu: 'format', label: 'Align right', command: 'alignRight' },
-      { menu: 'format', label: 'Justify', command: 'alignJustify' },
-    ],
   }
 }
 

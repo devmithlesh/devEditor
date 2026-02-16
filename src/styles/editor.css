@@ -144,6 +144,19 @@
   max-width: 100%;
   height: auto;
   border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Element selection (image/table selected for resize/delete) */
+.de-content img.de-element--selected {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  cursor: default;
+}
+
+.de-content table.de-element--selected {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 /* Table styles */

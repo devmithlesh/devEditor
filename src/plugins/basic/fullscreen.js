@@ -28,7 +28,6 @@ export function fullscreenPlugin() {
         },
       },
     },
-    menuItems: { view: [{ label: 'Fullscreen', command: 'fullscreen', shortcut: 'F11' }] },
     shortcuts: { 'F11': 'fullscreen' },
     css: `.de-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important; border-radius: 0 !important; border: none !important; margin: 0 !important; width: 100vw !important; height: 100vh !important; }
 .de-fullscreen .de-content { max-height: calc(100vh - var(--de-toolbar-height) - var(--de-menubar-height) - var(--de-statusbar-height)) !important; }`,

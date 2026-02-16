@@ -28,6 +28,5 @@ export function fontSizePlugin() {
         },
       },
     },
-    menuItems: { format: [{ label: 'Font Size', submenu: 'fontsize' }] },
   }
 }

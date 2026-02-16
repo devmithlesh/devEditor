@@ -27,10 +27,6 @@ export function underlinePlugin() {
       },
     ],
 
-    menuItems: [
-      { menu: 'format', label: 'Underline', command: 'underline', shortcutLabel: 'Ctrl+U' },
-    ],
-
     shortcuts: [
       { combo: 'ctrl+u', command: 'underline' },
     ],

@@ -35,7 +35,6 @@ export function searchReplacePlugin() {
         popupType: 'searchreplace',
       },
     },
-    menuItems: { edit: [{ type: 'separator' }, { label: 'Find and Replace...', command: 'searchReplace', shortcut: 'Ctrl+H' }] },
     shortcuts: { 'ctrl+h': 'searchReplace' },
     css: `.de-search-replace-popup .de-popup-field { margin-bottom: 12px; }
 .de-search-replace-popup .de-popup-field label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500; color: #374151; }

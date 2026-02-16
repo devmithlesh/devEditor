@@ -29,10 +29,6 @@ export function boldPlugin() {
       },
     ],
 
-    menuItems: [
-      { menu: 'format', label: 'Bold', command: 'bold', shortcutLabel: 'Ctrl+B' },
-    ],
-
     shortcuts: [
       { combo: 'ctrl+b', command: 'bold' },
     ],

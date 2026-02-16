@@ -121,6 +121,9 @@ export function ToolbarOverflow({ groups }) {
     const handler = (e) => {
       if (popupRef.current && popupRef.current.contains(e.target)) return
       if (overflowBtnRef.current && overflowBtnRef.current.contains(e.target)) return
+      // Don't close overflow if click is inside a portal-rendered toolbar popup
+      // (e.g. emoji picker, color picker, link popup opened from an overflow button)
+      if (e.target.closest && e.target.closest('.de-toolbar-popup')) return
       setShowPopup(false)
     }
     document.addEventListener('mousedown', handler, true)

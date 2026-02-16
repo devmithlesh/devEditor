@@ -27,10 +27,6 @@ export function italicPlugin() {
       },
     ],
 
-    menuItems: [
-      { menu: 'format', label: 'Italic', command: 'italic', shortcutLabel: 'Ctrl+I' },
-    ],
-
     shortcuts: [
       { combo: 'ctrl+i', command: 'italic' },
     ],

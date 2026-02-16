@@ -46,6 +46,6 @@ export function directionalityPlugin() {
         isActive: (engine) => getDir(engine) === 'rtl',
       },
     },
-    menuItems: { format: [{ type: 'separator' }, { label: 'Left to Right', command: 'ltr' }, { label: 'Right to Left', command: 'rtl' }] },
+    menuItems: { format: [{ label: 'Left to Right', command: 'ltr' }, { label: 'Right to Left', command: 'rtl' }] },
   }
 }

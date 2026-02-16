@@ -57,8 +57,5 @@ export function imagePlugin() {
       },
     ],
 
-    menuItems: [
-      { menu: 'insert', label: 'Image...', command: 'insertImage' },
-    ],
   }
 }

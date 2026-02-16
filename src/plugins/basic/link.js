@@ -88,10 +88,6 @@ export function linkPlugin() {
       },
     ],
 
-    menuItems: [
-      { menu: 'insert', label: 'Link...', command: 'link', shortcutLabel: 'Ctrl+K' },
-    ],
-
     shortcuts: [
       { combo: 'ctrl+k', command: 'link' },
     ],

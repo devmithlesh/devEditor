@@ -23,6 +23,5 @@ pre{background:#f4f4f4;padding:12px;border-radius:4px;overflow-x:auto}</style>
         command: 'preview',
       },
     },
-    menuItems: { view: [{ label: 'Preview', command: 'preview' }] },
   }
 }

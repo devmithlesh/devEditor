@@ -69,10 +69,6 @@ export function listsPlugin() {
       },
     ],
 
-    menuItems: [
-      { menu: 'format', label: 'Bullet list', command: 'insertUnorderedList' },
-      { menu: 'format', label: 'Numbered list', command: 'insertOrderedList' },
-    ],
   }
 }
 

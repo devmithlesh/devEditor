@@ -27,10 +27,6 @@ export function strikethroughPlugin() {
       },
     ],
 
-    menuItems: [
-      { menu: 'format', label: 'Strikethrough', command: 'strikethrough', shortcutLabel: 'Ctrl+Shift+X' },
-    ],
-
     shortcuts: [
       { combo: 'ctrl+shift+x', command: 'strikethrough' },
     ],

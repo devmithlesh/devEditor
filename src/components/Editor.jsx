@@ -22,6 +22,8 @@ import { ContextMenu } from './ContextMenu.jsx'
 import { Toolbar } from '../toolbar/Toolbar.jsx'
 import { MenuBar } from '../menubar/MenuBar.jsx'
 import { MentionDropdown } from './MentionDropdown.jsx'
+import { ImageResizeOverlay } from './ImageResizeOverlay.jsx'
+import { TableResizeOverlay } from './TableResizeOverlay.jsx'
 
 const DEFAULT_TOOLBAR = 'undo redo | formatselect | bold italic underline strikethrough | alignleft | bullist numlist | outdent indent | link image | removeformat'
 const DEFAULT_MENUBAR = 'file edit view insert format tools table help'
@@ -48,6 +50,7 @@ const Editor = forwardRef(function Editor(props, ref) {
 
   const [editorHeight, setEditorHeight] = useState(init.height || 300)
   const isUpdatingFromPropRef = useRef(false)
+  const contentAreaRef = useRef(null)
 
   // Handle controlled value prop (like TinyMCE React)
   useEffect(() => {
@@ -106,12 +109,17 @@ const Editor = forwardRef(function Editor(props, ref) {
       <EditorContainer>
         {showMenubar && <MenuBar config={menubarConfig} />}
         {showToolbar && <Toolbar config={toolbarConfig} />}
-        <EditorContent
-          style={contentStyle}
-          onBlur={handleBlur}
-          placeholder={init.placeholder}
-          spellCheck={init.browser_spellcheck !== false}
-        />
+        <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <EditorContent
+            ref={contentAreaRef}
+            style={contentStyle}
+            onBlur={handleBlur}
+            placeholder={init.placeholder}
+            spellCheck={init.browser_spellcheck !== false}
+          />
+          <ImageResizeOverlay contentRef={contentAreaRef} />
+          <TableResizeOverlay contentRef={contentAreaRef} />
+        </div>
         {showStatusbar && (
           <StatusBar
             showWordCount={init.wordcount !== false}

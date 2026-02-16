@@ -29,7 +29,6 @@ img{max-width:100%}table{border-collapse:collapse;width:100%}td,th{border:1px so
         command: 'print',
       },
     },
-    menuItems: { file: [{ label: 'Print', command: 'print', shortcut: 'Ctrl+P' }] },
     shortcuts: { 'ctrl+p': 'print' },
   }
 }
