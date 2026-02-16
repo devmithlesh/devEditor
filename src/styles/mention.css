@@ -1,0 +1,86 @@
+/* Mention Dropdown */
+.de-mention-dropdown {
+  position: fixed;
+  z-index: 10002;
+  max-height: 160px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--de-menubar-dropdown-bg);
+  border: var(--de-menubar-dropdown-border);
+  border-radius: var(--de-menubar-dropdown-radius);
+  box-shadow: var(--de-menubar-dropdown-shadow);
+  padding: 4px 0;
+  min-width: 200px;
+  font-family: var(--de-font-family);
+  font-size: 13px;
+}
+
+.de-mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--de-text-color);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  font-family: inherit;
+  transition: background-color 0.15s;
+}
+
+.de-mention-item:hover,
+.de-mention-item--selected {
+  background: var(--de-menubar-dropdown-item-hover-bg);
+  color: var(--de-menubar-dropdown-item-hover-color);
+}
+
+.de-mention-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--de-toolbar-btn-hover-bg);
+  color: var(--de-text-color);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.de-mention-item:hover .de-mention-avatar,
+.de-mention-item--selected .de-mention-avatar {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--de-menubar-dropdown-item-hover-color);
+}
+
+.de-mention-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.de-mention-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.de-mention-id {
+  font-size: 11px;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.de-mention-item:hover .de-mention-id,
+.de-mention-item--selected .de-mention-id {
+  opacity: 0.9;
+}

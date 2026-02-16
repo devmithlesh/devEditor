@@ -34,7 +34,7 @@ export function getDefaultMenuItems() {
       { label: 'Select all', command: 'selectAll', shortcutLabel: 'Ctrl+A' },
     ],
     view: [
-      { label: 'Source code', command: 'viewSource' },
+      { label: 'Source code', command: 'sourceView' },
       { label: 'Word count', command: 'wordCount' },
     ],
     insert: [
@@ -49,7 +49,7 @@ export function getDefaultMenuItems() {
     format: [],  // Populated by plugins
     tools: [
       { label: 'Word count', command: 'wordCount' },
-      { label: 'Source code', command: 'viewSource' },
+      { label: 'Source code', command: 'sourceView' },
     ],
     table: [],  // Populated by table plugin
     help: [

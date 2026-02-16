@@ -27,18 +27,18 @@ function getAlignment(engine) {
 
 function getCurrentListStyle(engine, listType) {
   const sel = engine._selection?.getSavedSelection()
-  if (!sel) return listType === 'bulletList' ? 'disc' : 'decimal'
+  if (!sel) return null
   const block = engine.findBlockForTextNode(sel.anchorNodeId)
-  if (!block) return listType === 'bulletList' ? 'disc' : 'decimal'
+  if (!block) return null
   const parentInfo = findParent(engine._model.doc, block.id)
-  if (!parentInfo) return listType === 'bulletList' ? 'disc' : 'decimal'
+  if (!parentInfo) return null
   if (parentInfo.parent.type === 'listItem') {
     const listItemInfo = findParent(engine._model.doc, parentInfo.parent.id)
     if (listItemInfo && listItemInfo.parent.type === listType) {
       return listItemInfo.parent.attrs?.listStyleType || (listType === 'bulletList' ? 'disc' : 'decimal')
     }
   }
-  return listType === 'bulletList' ? 'disc' : 'decimal'
+  return null // Return null if not in a list of the specified type
 }
 
 /** Map font size pt values to scaled preview sizes for the dropdown */
@@ -236,12 +236,14 @@ export const ToolbarDropdown = memo(function ToolbarDropdown({ button, openDropd
               isActive = currentAlign === item.value
             } else if (button.name === 'bullist') {
               // For bullet list, compare current style with item value
+              // Only active if cursor is actually in a bullet list
               const currentStyle = getCurrentListStyle(engine, 'bulletList')
-              isActive = currentStyle === item.value
+              isActive = currentStyle !== null && currentStyle === item.value
             } else if (button.name === 'numlist') {
               // For numbered list, compare current style with item value
+              // Only active if cursor is actually in an ordered list
               const currentStyle = getCurrentListStyle(engine, 'orderedList')
-              isActive = currentStyle === item.value
+              isActive = currentStyle !== null && currentStyle === item.value
             } else {
               isActive = label === item.label || (button.getLabel && button.getLabel(engine) === item.label)
             }

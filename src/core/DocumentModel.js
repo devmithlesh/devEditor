@@ -69,7 +69,31 @@ export class DocumentModel {
   _deleteText({ nodeId, offset, count }) {
     const node = findNodeById(this.doc, nodeId)
     if (!node || node.type !== 'text') return
-    node.text = node.text.slice(0, offset) + node.text.slice(offset + count)
+    
+    // Delete the text
+    const beforeText = node.text.slice(0, offset)
+    const afterText = node.text.slice(offset + count)
+    node.text = beforeText + afterText
+    
+    // If text node becomes empty or only whitespace, remove all marks
+    if (!node.text || node.text.trim().length === 0) {
+      if (node.marks) {
+        delete node.marks
+      }
+      // Set to empty string for consistency
+      node.text = ''
+    } else if (node.marks && node.marks.length > 0) {
+      // If we deleted text that had mention marks, check if mention is still valid
+      // Remove mention mark if the remaining text doesn't start with @
+      if (node.marks.some(m => m.type === 'mention')) {
+        if (!node.text.trim().startsWith('@')) {
+          node.marks = node.marks.filter(m => m.type !== 'mention')
+          if (node.marks.length === 0) {
+            delete node.marks
+          }
+        }
+      }
+    }
   }
 
   /**

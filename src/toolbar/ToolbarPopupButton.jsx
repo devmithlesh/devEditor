@@ -11,12 +11,16 @@ import { ImagePopup } from './popups/ImagePopup.jsx'
 import { EmojiPopup } from './popups/EmojiPopup.jsx'
 import { ColorPickerPopup } from './popups/ColorPickerPopup.jsx'
 import { TableGridPopup } from './popups/TableGridPopup.jsx'
+import { CharmapPopup } from './popups/CharmapPopup.jsx'
+import { SearchReplacePopup } from './popups/SearchReplacePopup.jsx'
 
 const POPUP_MAP = {
   link: LinkPopup,
   image: ImagePopup,
   emoticons: EmojiPopup,
   tablegrid: TableGridPopup,
+  charmap: CharmapPopup,
+  searchreplace: SearchReplacePopup,
 }
 
 export const ToolbarPopupButton = memo(function ToolbarPopupButton({ button }) {

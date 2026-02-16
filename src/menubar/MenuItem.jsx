@@ -117,7 +117,14 @@ export const MenuItem = memo(function MenuItem({ item, onClose }) {
       </button>
 
       {hasSubmenu && submenuOpen && (
-        <div className="de-menu-submenu" role="menu">
+        <div 
+          className="de-menu-submenu" 
+          role="menu"
+          onMouseLeave={() => {
+            clearTimeout(hoverTimer.current)
+            hoverTimer.current = setTimeout(() => setSubmenuOpen(false), 150)
+          }}
+        >
           {item.submenuItems.map((sub, i) => (
             <MenuItem key={sub.label || sub.type || i} item={sub} onClose={onClose} />
           ))}

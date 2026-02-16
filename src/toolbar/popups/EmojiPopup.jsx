@@ -2,7 +2,7 @@
  * @fileoverview EmojiPopup — floating panel with emoji grid and search.
  */
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEditorEngine } from '../../core/EditorContext.jsx'
 import { ToolbarPopup } from '../ToolbarPopup.jsx'
 
@@ -66,7 +66,7 @@ export function EmojiPopup({ anchorRef, isOpen, onClose }) {
     ? EMOJI_LIST.filter((e) => e.name.includes(search.toLowerCase()))
     : EMOJI_LIST
 
-  const handleSelect = (emoji) => {
+  const handleSelect = useCallback((emoji) => {
     engine._selection?.restoreSelection()
     engine._isExecutingCommand = true
     try {
@@ -74,13 +74,22 @@ export function EmojiPopup({ anchorRef, isOpen, onClose }) {
     } finally {
       engine._isExecutingCommand = false
     }
-  }
+    // Don't close popup - allow multiple emoji selections
+  }, [engine])
 
   return (
     <ToolbarPopup anchorRef={anchorRef} isOpen={isOpen} onClose={onClose} width={320}>
       <div className="de-popup-header">
         <span>Emoticons</span>
-        <button className="de-popup-close" onClick={onClose}>&times;</button>
+        <button 
+          className="de-popup-close" 
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+        >
+          &times;
+        </button>
       </div>
       <div className="de-popup-field">
         <input
@@ -91,13 +100,15 @@ export function EmojiPopup({ anchorRef, isOpen, onClose }) {
           placeholder="Search emojis..."
         />
       </div>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(10, 1fr)',
-        gap: '2px',
-        maxHeight: '200px',
-        overflowY: 'auto',
-      }}>
+      <div 
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(10, 1fr)',
+          gap: '2px',
+          maxHeight: '200px',
+          overflowY: 'auto',
+        }}
+      >
         {filtered.map((e) => (
           <button
             key={e.emoji}
@@ -108,8 +119,15 @@ export function EmojiPopup({ anchorRef, isOpen, onClose }) {
               justifyContent: 'center', border: 'none', borderRadius: '4px',
               background: 'none', fontSize: '18px', cursor: 'pointer', padding: 0,
             }}
-            onMouseDown={(ev) => { ev.preventDefault(); ev.stopPropagation() }}
-            onClick={() => handleSelect(e.emoji)}
+            onMouseDown={(ev) => { 
+              ev.preventDefault()
+              ev.stopPropagation()
+            }}
+            onClick={(ev) => {
+              ev.preventDefault()
+              ev.stopPropagation()
+              handleSelect(e.emoji)
+            }}
           >
             {e.emoji}
           </button>

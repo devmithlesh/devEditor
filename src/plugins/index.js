@@ -31,6 +31,7 @@ import { codeSamplePlugin } from './basic/codesample.js'
 import { autosavePlugin } from './basic/autosave.js'
 import { undoRedoPlugin } from './basic/undoredo.js'
 import { clipboardPlugin } from './basic/clipboard.js'
+import { utilityPlugin } from './basic/utility.js'
 
 // Advanced plugins
 import { tablePlugin } from './advanced/table.js'
@@ -51,7 +52,7 @@ export {
   fullscreenPlugin, previewPlugin, printPlugin, sourceViewPlugin,
   searchReplacePlugin, charmapPlugin, emoticonsPlugin, insertDateTimePlugin,
   directionalityPlugin, pageBreakPlugin, nonBreakingPlugin, anchorPlugin,
-  codeSamplePlugin, autosavePlugin, undoRedoPlugin, clipboardPlugin,
+  codeSamplePlugin, autosavePlugin, undoRedoPlugin, clipboardPlugin, utilityPlugin,
   tablePlugin, imagePlugin, codeBlockPlugin, videoPlugin, mentionPlugin,
   toggleMark, isMarkActive, applyMarkToSelection, removeMarkFromSelection,
 }
@@ -97,5 +98,6 @@ export function defaultPlugins() {
     anchorPlugin(),
     codeSamplePlugin(),
     autosavePlugin(),
+    utilityPlugin(),
   ]
 }

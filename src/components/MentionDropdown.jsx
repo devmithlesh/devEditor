@@ -191,13 +191,8 @@ export function MentionDropdown() {
       ref={dropdownRef}
       className="de-mention-dropdown"
       style={{
-        position: 'fixed',
         top: `${position.top}px`,
         left: `${position.left}px`,
-        zIndex: 10002,
-        maxHeight: '160px',
-        overflowY: 'auto',
-        overflowX: 'hidden',
       }}
     >
       {filtered.map((user, i) => {

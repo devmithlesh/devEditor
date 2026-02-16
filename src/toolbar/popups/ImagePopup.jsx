@@ -38,7 +38,15 @@ export function ImagePopup({ anchorRef, isOpen, onClose }) {
     <ToolbarPopup anchorRef={anchorRef} isOpen={isOpen} onClose={onClose} width={320}>
       <div className="de-popup-header">
         <span>Insert Image</span>
-        <button className="de-popup-close" onClick={onClose}>&times;</button>
+        <button 
+          className="de-popup-close" 
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+        >
+          &times;
+        </button>
       </div>
       <div className="de-popup-field">
         <label>Image URL</label>
@@ -62,8 +70,24 @@ export function ImagePopup({ anchorRef, isOpen, onClose }) {
         />
       </div>
       <div className="de-popup-actions">
-        <button className="de-popup-btn" onClick={onClose}>Cancel</button>
-        <button className="de-popup-btn de-popup-btn--primary" onClick={handleInsert}>Insert</button>
+        <button 
+          className="de-popup-btn" 
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+        >
+          Cancel
+        </button>
+        <button 
+          className="de-popup-btn de-popup-btn--primary" 
+          onClick={(e) => {
+            e.stopPropagation()
+            handleInsert()
+          }}
+        >
+          Insert
+        </button>
       </div>
     </ToolbarPopup>
   )

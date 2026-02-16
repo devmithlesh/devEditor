@@ -51,7 +51,15 @@ export function ColorPickerPopup({ anchorRef, isOpen, onClose, command, title })
     <ToolbarPopup anchorRef={anchorRef} isOpen={isOpen} onClose={onClose} width={240}>
       <div className="de-popup-header">
         <span>{title || 'Pick a Color'}</span>
-        <button className="de-popup-close" onClick={onClose}>&times;</button>
+        <button 
+          className="de-popup-close" 
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+        >
+          &times;
+        </button>
       </div>
       <div className="de-colorpicker-grid">
         {DEFAULT_COLORS.map((color) => (
@@ -83,8 +91,14 @@ export function ColorPickerPopup({ anchorRef, isOpen, onClose, command, title })
             borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace',
           }}
         />
-        <button className="de-popup-btn de-popup-btn--primary" onClick={handleCustomApply}
-          style={{ padding: '4px 10px', fontSize: '12px' }}>
+        <button 
+          className="de-popup-btn de-popup-btn--primary" 
+          onClick={(e) => {
+            e.stopPropagation()
+            handleCustomApply()
+          }}
+          style={{ padding: '4px 10px', fontSize: '12px' }}
+        >
           Apply
         </button>
       </div>

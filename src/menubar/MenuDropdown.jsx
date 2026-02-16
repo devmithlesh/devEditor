@@ -21,6 +21,22 @@ export function MenuDropdown({ items, isOpen, onClose }) {
     return () => document.removeEventListener('keydown', handler)
   }, [isOpen, onClose])
 
+  // Close on outside click (including submenus)
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        // Check if click is in any submenu
+        const submenu = e.target.closest('.de-menu-submenu')
+        if (!submenu) {
+          onClose()
+        }
+      }
+    }
+    document.addEventListener('mousedown', handler, true)
+    return () => document.removeEventListener('mousedown', handler, true)
+  }, [isOpen, onClose])
+
   if (!isOpen || !items || items.length === 0) return null
 
   return (

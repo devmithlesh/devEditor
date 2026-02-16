@@ -70,7 +70,15 @@ export function LinkPopup({ anchorRef, isOpen, onClose }) {
     <ToolbarPopup anchorRef={anchorRef} isOpen={isOpen} onClose={onClose} width={320}>
       <div className="de-popup-header">
         <span>{hasExistingLink ? 'Edit Link' : 'Insert Link'}</span>
-        <button className="de-popup-close" onClick={onClose}>&times;</button>
+        <button 
+          className="de-popup-close" 
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+        >
+          &times;
+        </button>
       </div>
       <div className="de-popup-field">
         <label>URL</label>
@@ -95,10 +103,32 @@ export function LinkPopup({ anchorRef, isOpen, onClose }) {
       </div>
       <div className="de-popup-actions">
         {hasExistingLink && (
-          <button className="de-popup-btn de-popup-btn--danger" onClick={handleRemove}>Remove</button>
+          <button 
+            className="de-popup-btn de-popup-btn--danger" 
+            onClick={(e) => {
+              e.stopPropagation()
+              handleRemove()
+            }}
+          >
+            Remove
+          </button>
         )}
-        <button className="de-popup-btn" onClick={onClose}>Cancel</button>
-        <button className="de-popup-btn de-popup-btn--primary" onClick={handleInsert}>
+        <button 
+          className="de-popup-btn" 
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+        >
+          Cancel
+        </button>
+        <button 
+          className="de-popup-btn de-popup-btn--primary" 
+          onClick={(e) => {
+            e.stopPropagation()
+            handleInsert()
+          }}
+        >
           {hasExistingLink ? 'Update' : 'Insert'}
         </button>
       </div>

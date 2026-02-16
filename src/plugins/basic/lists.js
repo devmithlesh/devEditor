@@ -125,12 +125,195 @@ function getBlocksInSelection(engine, sel) {
   return blocks
 }
 
+/**
+ * Get list information for selected blocks
+ * @returns {{ allInSameList: boolean, listNode: Object|null, listType: string|null, style: string|null }}
+ */
+function getListInfo(blocks, doc) {
+  let listNode = null
+  let listType = null
+  let style = null
+  let allInSameList = true
+
+  for (const block of blocks) {
+    const parentInfo = findParent(doc, block.id)
+    if (!parentInfo || parentInfo.parent.type !== 'listItem') {
+      allInSameList = false
+      break
+    }
+    
+    const listItemInfo = findParent(doc, parentInfo.parent.id)
+    if (!listItemInfo) {
+      allInSameList = false
+      break
+    }
+    
+    const currentList = listItemInfo.parent
+    if (!listNode) {
+      listNode = currentList
+      listType = currentList.type
+      style = currentList.attrs?.listStyleType || (listType === 'bulletList' ? 'disc' : 'decimal')
+    } else if (currentList.id !== listNode.id) {
+      allInSameList = false
+      break
+    }
+  }
+
+  return { allInSameList, listNode, listType, style }
+}
+
+/**
+ * Unwrap blocks from their current list items
+ * @returns {Object[]} Array of unwrapped blocks
+ */
+function unwrapBlocksFromLists(blocks, doc) {
+  const blocksToWrap = []
+  const processedBlockIds = new Set()
+
+  for (const block of blocks) {
+    if (processedBlockIds.has(block.id)) continue
+    
+    const parentInfo = findParent(doc, block.id)
+    if (!parentInfo) continue
+    
+    if (parentInfo.parent.type === 'listItem') {
+      const listItemInfo = findParent(doc, parentInfo.parent.id)
+      if (listItemInfo) {
+        const listNode = listItemInfo.parent
+        const listParent = findParent(doc, listNode.id)
+        if (listParent) {
+          const listItem = listNode.content.find(item => 
+            item.content && item.content.some(b => b.id === block.id)
+          )
+          if (listItem && listItem.content) {
+            // Extract blocks from this list item
+            for (const b of listItem.content) {
+              if (!processedBlockIds.has(b.id)) {
+                blocksToWrap.push(b)
+                processedBlockIds.add(b.id)
+              }
+            }
+            // Remove the list item
+            const itemIndex = listNode.content.indexOf(listItem)
+            listNode.content.splice(itemIndex, 1)
+            
+            // If list is now empty, remove it
+            if (listNode.content.length === 0) {
+              listParent.parent.content.splice(listParent.index, 1)
+            }
+          }
+        }
+      }
+    } else {
+      blocksToWrap.push(block)
+      processedBlockIds.add(block.id)
+    }
+  }
+
+  return blocksToWrap
+}
+
+/**
+ * Create a new list node with blocks as list items
+ */
+function createListNode(listType, style, blocks) {
+  const defaultStyle = listType === 'bulletList' ? 'disc' : 'decimal'
+  return {
+    id: generateId(),
+    type: listType,
+    attrs: style ? { listStyleType: style } : {},
+    content: blocks.map(block => ({
+      id: generateId(),
+      type: 'listItem',
+      content: [deepClone(block)],
+    })),
+  }
+}
+
+/**
+ * Insert list at the correct position and remove original blocks
+ */
+function insertListAtPosition(listNode, blocks, doc) {
+  if (blocks.length === 0) return
+
+  const firstBlock = blocks[0]
+  const firstBlockParent = findParent(doc, firstBlock.id)
+  if (!firstBlockParent) return
+
+  const parent = firstBlockParent.parent
+  const firstBlockIndex = firstBlockParent.index
+
+  // Get indices of blocks to remove (they might be in different parents after unwrapping)
+  const indicesToRemove = blocks
+    .map(b => {
+      const info = findParent(doc, b.id)
+      return info && info.parent === parent ? info.index : -1
+    })
+    .filter(idx => idx !== -1)
+    .sort((a, b) => b - a) // Sort descending for safe removal
+
+  // Remove blocks (from end to start to maintain indices)
+  for (const idx of indicesToRemove) {
+    parent.content.splice(idx, 1)
+  }
+
+  // Calculate adjusted insertion index
+  let adjustedIndex = firstBlockIndex
+  for (const idx of indicesToRemove) {
+    if (idx < firstBlockIndex) adjustedIndex--
+  }
+
+  // Insert list at the adjusted position
+  parent.content.splice(adjustedIndex, 0, listNode)
+}
+
+/**
+ * Restore cursor position after list operation
+ */
+function restoreCursorAfterListOperation(engine, listType, originalSel) {
+  const container = engine.getContainer()
+  if (!container) return
+
+  container.focus({ preventScroll: true })
+
+  // Find the first list item of the target list type
+  let targetTextNode = null
+  let targetOffset = 0
+
+  walkTree(engine._model.doc, (node) => {
+    if (node.type === listType && node.content && node.content.length > 0) {
+      const firstListItem = node.content[0]
+      if (firstListItem.content && firstListItem.content.length > 0) {
+        const firstBlock = firstListItem.content[0]
+        walkTree(firstBlock, (n) => {
+          if (n.type === 'text') {
+            targetTextNode = n
+            targetOffset = n.text.length
+          }
+        })
+      }
+      return false
+    }
+  })
+
+  if (targetTextNode) {
+    engine._selection.setSavedSelection({
+      anchorNodeId: targetTextNode.id,
+      anchorOffset: targetOffset,
+      focusNodeId: targetTextNode.id,
+      focusOffset: targetOffset,
+      isCollapsed: true,
+    })
+    engine._selection.restoreSelection()
+  } else {
+    engine._selection.restoreSelection(originalSel)
+  }
+}
+
 function toggleList(engine, listType, style) {
-  // Use saved selection first (captured when dropdown opened), fallback to current selection
   const sel = engine._selection?.getSavedSelection() || engine._selection?.captureSelection()
   if (!sel) return
 
-  // Get all blocks in the selection
   const blocks = getBlocksInSelection(engine, sel)
   if (blocks.length === 0) return
 
@@ -138,194 +321,44 @@ function toggleList(engine, listType, style) {
     engine._historyManager.push(engine._model.getDoc(), sel)
   }
 
-  // Check if all blocks are already in the same list
-  let allInSameList = true
-  let currentListNode = null
-  let currentListType = null
-  let currentStyle = null
+  const { allInSameList, listNode, listType: currentListType, style: currentStyle } = getListInfo(blocks, engine._model.doc)
 
-  for (const block of blocks) {
-    const parentInfo = findParent(engine._model.doc, block.id)
-    if (!parentInfo || parentInfo.parent.type !== 'listItem') {
-      allInSameList = false
-      break
-    }
-    
-    const listItemInfo = findParent(engine._model.doc, parentInfo.parent.id)
-    if (!listItemInfo) {
-      allInSameList = false
-      break
-    }
-    
-    const listNode = listItemInfo.parent
-    if (!currentListNode) {
-      currentListNode = listNode
-      currentListType = listNode.type
-      currentStyle = listNode.attrs?.listStyleType || (currentListType === 'bulletList' ? 'disc' : 'decimal')
-    } else if (listNode.id !== currentListNode.id) {
-      allInSameList = false
-      break
-    }
-  }
-
-  // If all blocks are in the same list with same type and style, toggle off
+  // Case 1: All blocks in same list, same type and style - toggle off
   if (allInSameList && currentListType === listType && currentStyle === style) {
-    const listParent = findParent(engine._model.doc, currentListNode.id)
+    const listParent = findParent(engine._model.doc, listNode.id)
     if (listParent) {
       const unwrappedBlocks = []
-      for (const item of currentListNode.content) {
+      for (const item of listNode.content) {
         if (item.content) {
           unwrappedBlocks.push(...item.content)
         }
       }
       listParent.parent.content.splice(listParent.index, 1, ...unwrappedBlocks)
     }
-  } else if (allInSameList && currentListType === listType) {
-    // Same list type, different style - just update style
-    if (!currentListNode.attrs) currentListNode.attrs = {}
-    currentListNode.attrs.listStyleType = style
-  } else {
-    // Need to convert blocks to list - first unwrap any blocks that are in lists
-    const blocksToWrap = []
-    const processedBlockIds = new Set()
-    
-    for (const block of blocks) {
-      if (processedBlockIds.has(block.id)) continue
-      
-      const parentInfo = findParent(engine._model.doc, block.id)
-      if (!parentInfo) continue
-      
-      if (parentInfo.parent.type === 'listItem') {
-        // Unwrap from existing list
-        const listItemInfo = findParent(engine._model.doc, parentInfo.parent.id)
-        if (listItemInfo) {
-          const listNode = listItemInfo.parent
-          const listParent = findParent(engine._model.doc, listNode.id)
-          if (listParent) {
-            // Find the list item containing this block
-            const listItem = listNode.content.find(item => 
-              item.content && item.content.some(b => b.id === block.id)
-            )
-            if (listItem && listItem.content) {
-              // Extract blocks from this list item
-              for (const b of listItem.content) {
-                if (!processedBlockIds.has(b.id)) {
-                  blocksToWrap.push(b)
-                  processedBlockIds.add(b.id)
-                }
-              }
-              // Remove the list item
-              const itemIndex = listNode.content.indexOf(listItem)
-              listNode.content.splice(itemIndex, 1)
-              
-              // If list is now empty, remove it
-              if (listNode.content.length === 0) {
-                listParent.parent.content.splice(listParent.index, 1)
-              }
-            }
-          }
-        }
-      } else {
-        // Not in a list, add directly
-        blocksToWrap.push(block)
-        processedBlockIds.add(block.id)
-      }
-    }
-    
-    // Now wrap all blocks in a single list
+  }
+  // Case 2: All blocks in same list, same type, different style - update style
+  else if (allInSameList && currentListType === listType) {
+    if (!listNode.attrs) listNode.attrs = {}
+    listNode.attrs.listStyleType = style
+  }
+  // Case 3: All blocks in same list, different type - convert list type
+  else if (allInSameList && currentListType !== listType) {
+    listNode.type = listType
+    if (!listNode.attrs) listNode.attrs = {}
+    listNode.attrs.listStyleType = style || (listType === 'bulletList' ? 'disc' : 'decimal')
+  }
+  // Case 4: Blocks in different lists or not in lists - unwrap and create new list
+  else {
+    const blocksToWrap = unwrapBlocksFromLists(blocks, engine._model.doc)
     if (blocksToWrap.length > 0) {
-      // Find the parent of the first block to insert the list there
-      const firstBlock = blocksToWrap[0]
-      const firstBlockParent = findParent(engine._model.doc, firstBlock.id)
-      if (firstBlockParent) {
-        const firstBlockIndex = firstBlockParent.index
-        
-        // Create list with first block
-        const listNode = {
-          id: generateId(),
-          type: listType,
-          attrs: style ? { listStyleType: style } : {},
-          content: [{
-            id: generateId(),
-            type: 'listItem',
-            content: [deepClone(firstBlock)],
-          }],
-        }
-        
-        // Add remaining blocks as list items
-        for (let i = 1; i < blocksToWrap.length; i++) {
-          listNode.content.push({
-            id: generateId(),
-            type: 'listItem',
-            content: [deepClone(blocksToWrap[i])],
-          })
-        }
-        
-        // Remove original blocks and insert list
-        const parent = firstBlockParent.parent
-        const indicesToRemove = blocksToWrap.map(b => {
-          const info = findParent(engine._model.doc, b.id)
-          return info ? info.index : -1
-        }).filter(idx => idx !== -1).sort((a, b) => b - a) // Sort descending for safe removal
-        
-        // Remove blocks (from end to start to maintain indices)
-        for (const idx of indicesToRemove) {
-          parent.content.splice(idx, 1)
-        }
-        
-        // Insert list at the position of the first block
-        parent.content.splice(firstBlockIndex, 0, listNode)
-      }
+      const listNode = createListNode(listType, style, blocksToWrap)
+      insertListAtPosition(listNode, blocksToWrap, engine._model.doc)
     }
   }
 
   engine._model._ensureMinimumContent()
   engine._reconcile()
-  
-  // After reconciliation, focus the container and restore selection
-  const container = engine.getContainer()
-  if (container) {
-    // Focus the container first to ensure typing works
-    container.focus({ preventScroll: true })
-    
-    // After cloning blocks and wrapping in list items, old selection coordinates are invalid
-    // Find the first list item of the target list type and set cursor at the end of its text
-    let targetTextNode = null
-    let targetOffset = 0
-    
-    walkTree(engine._model.doc, (node) => {
-      if (node.type === listType && node.content && node.content.length > 0) {
-        const firstListItem = node.content[0]
-        if (firstListItem.content && firstListItem.content.length > 0) {
-          const firstBlock = firstListItem.content[0]
-          // Find last text node in this block
-          walkTree(firstBlock, (n) => {
-            if (n.type === 'text') {
-              targetTextNode = n
-              targetOffset = n.text.length
-            }
-          })
-        }
-        return false // Stop after finding first matching list
-      }
-    })
-    
-    if (targetTextNode) {
-      // Set cursor at the end of the first list item's text
-      engine._selection.setSavedSelection({
-        anchorNodeId: targetTextNode.id,
-        anchorOffset: targetOffset,
-        focusNodeId: targetTextNode.id,
-        focusOffset: targetOffset,
-        isCollapsed: true,
-      })
-      engine._selection.restoreSelection()
-    } else {
-      // Fallback: try to restore original selection (might work for style changes)
-      engine._selection.restoreSelection(sel)
-    }
-  }
-  
+  restoreCursorAfterListOperation(engine, listType, sel)
   engine._bumpVersion()
 }
 

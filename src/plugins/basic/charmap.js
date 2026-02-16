@@ -24,43 +24,40 @@ export function charmapPlugin() {
     name: 'charmap',
     commands: {
       charmap: (engine) => {
+        // Trigger popup by finding the toolbar button and clicking it
         const container = engine.getContainer()?.closest('.de-editor-container')
         if (!container) return
-
-        const existing = container.querySelector('.de-charmap-dialog')
-        if (existing) { existing.remove(); return }
-
-        const dialog = document.createElement('div')
-        dialog.className = 'de-charmap-dialog'
-        dialog.innerHTML = `<div class="de-charmap-header"><span>Special Characters</span><button class="de-charmap-close">&times;</button></div>
-          <div class="de-charmap-grid">${SPECIAL_CHARS.map(c => `<button class="de-charmap-char" title="${c.name}" data-char="${c.char}">${c.char}</button>`).join('')}</div>`
-        container.appendChild(dialog)
-
-        dialog.querySelector('.de-charmap-close').addEventListener('click', () => dialog.remove())
-        dialog.querySelector('.de-charmap-grid').addEventListener('click', (e) => {
-          const char = e.target.dataset?.char
-          if (char) {
-            engine._handleInsertText(char)
-            dialog.remove()
-          }
-        })
+        
+        // Find the charmap button in toolbar (check both main toolbar and overflow)
+        const toolbar = container.querySelector('.de-toolbar')
+        if (!toolbar) return
+        
+        // Try to find button by data attribute or aria-label
+        let charmapBtn = toolbar.querySelector('button[data-button-name="charmap"]')
+        if (!charmapBtn) {
+          charmapBtn = Array.from(toolbar.querySelectorAll('button')).find(btn => 
+            btn.getAttribute('aria-label')?.toLowerCase().includes('special character') ||
+            btn.getAttribute('aria-label')?.toLowerCase().includes('charmap')
+          )
+        }
+        
+        if (charmapBtn) {
+          charmapBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }))
+        }
       },
     },
     toolbarButtons: {
       charmap: {
+        type: 'popup',
         label: 'Special Characters',
         tooltip: 'Special Characters',
         icon: '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M9.93 13.5h4.14L12 7.98 9.93 13.5zM20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-4.05 16.5l-1.14-3H9.17l-1.12 3H5.96l5.11-13h1.86l5.11 13h-2.09z" fill="currentColor"/></svg>',
-        command: 'charmap',
+        popupType: 'charmap',
       },
     },
     menuItems: { insert: [{ label: 'Special Character...', command: 'charmap' }] },
-    css: `.de-charmap-dialog { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); z-index: 1000; width: 360px; }
-.de-charmap-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; font-weight: 600; font-size: 14px; }
-.de-charmap-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; padding: 0; }
-.de-charmap-close:hover { color: #111; }
-.de-charmap-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; padding: 12px; max-height: 250px; overflow-y: auto; }
-.de-charmap-char { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 4px; background: none; font-size: 18px; cursor: pointer; }
-.de-charmap-char:hover { background: #dbeafe; border-color: #93c5fd; }`,
+    css: `.de-charmap-popup .de-charmap-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; padding: 12px; max-height: 300px; overflow-y: auto; }
+.de-charmap-popup .de-charmap-char { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 4px; background: none; font-size: 18px; cursor: pointer; padding: 0; }
+.de-charmap-popup .de-charmap-char:hover { background: #dbeafe; border-color: #93c5fd; }`,
   }
 }

@@ -6,10 +6,11 @@
   font-family: var(--de-font-family);
   font-size: var(--de-font-size);
   color: var(--de-text-color);
-  overflow: visible;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
+  max-height: 100vh;
 }
 
 .de-editor-container:focus-within {
@@ -22,11 +23,13 @@
   flex: 1;
   padding: var(--de-content-padding);
   min-height: var(--de-content-min-height);
+  max-height: var(--de-content-min-height);
   font-size: var(--de-content-font-size);
   line-height: var(--de-content-line-height);
   color: var(--de-text-color);
   outline: none;
   overflow-y: auto;
+  overflow-x: hidden;
   word-wrap: break-word;
   white-space: pre-wrap;
 }
@@ -169,9 +172,32 @@
   display: inline;
 }
 
-.de-content p[data-node-id]:only-child:empty::before,
-.de-content .de-placeholder::before {
+/* Placeholder when editor is empty - show on first empty paragraph when not focused */
+.de-content:not(:focus):not(:focus-within) > p[data-node-id]:first-child:last-child:empty::before {
   content: attr(data-placeholder);
   color: #9ca3af;
   pointer-events: none;
+  display: inline-block;
+}
+
+/* Alternative approach: Show placeholder using CSS class */
+.de-content--empty:not(:focus):not(:focus-within) > p[data-node-id]:first-child:last-child:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  display: inline-block;
+}
+
+/* Hide placeholder when focused */
+.de-content:focus > p[data-node-id]:first-child:last-child:empty::before,
+.de-content:focus-within > p[data-node-id]:first-child:last-child:empty::before,
+.de-content--empty:focus > p[data-node-id]:first-child:last-child:empty::before,
+.de-content--empty:focus-within > p[data-node-id]:first-child:last-child:empty::before {
+  content: none;
+}
+
+/* Hide placeholder when there are multiple blocks or content */
+.de-content > p[data-node-id]:not(:first-child:last-child) ~ p[data-node-id]:empty::before,
+.de-content > p[data-node-id]:first-child:last-child:not(:empty)::before {
+  content: none;
 }

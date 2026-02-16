@@ -3,15 +3,18 @@
  * Attaches the EditorEngine to a real DOM element.
  */
 
-import { useRef, useEffect, useCallback } from 'react'
-import { useEditorEngine } from '../core/EditorContext.jsx'
+import { useRef, useEffect, useCallback, useState } from 'react'
+import { useEditorEngine, useEditorVersion } from '../core/EditorContext.jsx'
 
 /**
  * @param {{ style?: Object, onBlur?: function, placeholder?: string, spellCheck?: boolean }} props
  */
 export function EditorContent({ style, onBlur, placeholder, spellCheck = true }) {
   const engine = useEditorEngine()
+  const version = useEditorVersion() // Re-render when content changes
   const contentRef = useRef(null)
+  const [isFocused, setIsFocused] = useState(false)
+  const [isEmpty, setIsEmpty] = useState(true)
 
   useEffect(() => {
     const el = contentRef.current
@@ -37,14 +40,47 @@ export function EditorContent({ style, onBlur, placeholder, spellCheck = true })
     }
   }, [engine])
 
+  // Check if editor is empty
+  useEffect(() => {
+    if (!engine) return
+    
+    const checkEmpty = () => {
+      const doc = engine.getDoc()
+      if (!doc || !doc.content || doc.content.length === 0) {
+        setIsEmpty(true)
+        return
+      }
+      
+      // Check if all content is empty (only empty paragraphs with empty text nodes)
+      const hasContent = doc.content.some(block => {
+        if (!block.content || block.content.length === 0) return false
+        return block.content.some(node => {
+          if (node.type === 'text') {
+            return node.text && node.text.trim().length > 0
+          }
+          return true // Non-text nodes count as content
+        })
+      })
+      
+      setIsEmpty(!hasContent)
+    }
+    
+    checkEmpty()
+  }, [engine, version])
+
   const handleBlur = useCallback((e) => {
+    setIsFocused(false)
     if (onBlur) onBlur(e)
   }, [onBlur])
+
+  const handleFocus = useCallback(() => {
+    setIsFocused(true)
+  }, [])
 
   return (
     <div
       ref={contentRef}
-      className="de-content"
+      className={`de-content ${isEmpty && !isFocused ? 'de-content--empty' : ''}`}
       contentEditable
       suppressContentEditableWarning
       role="textbox"
@@ -53,6 +89,7 @@ export function EditorContent({ style, onBlur, placeholder, spellCheck = true })
       data-placeholder={placeholder || 'Start typing...'}
       style={style}
       onBlur={handleBlur}
+      onFocus={handleFocus}
       spellCheck={spellCheck}
     />
   )

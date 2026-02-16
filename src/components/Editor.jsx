@@ -65,8 +65,15 @@ const Editor = forwardRef(function Editor(props, ref) {
     }
   }, [value, engine])
 
+  // Update CSS variable for editor height
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--de-content-min-height', `${editorHeight}px`)
+    }
+  }, [editorHeight])
+
   const contentStyle = {
-    minHeight: `${editorHeight}px`,
+    // Remove inline minHeight - now using CSS variable
   }
 
   const handleBlur = useCallback(() => {

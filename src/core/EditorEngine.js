@@ -38,6 +38,9 @@ export class EditorEngine {
     this._handlePaste = this._onPaste.bind(this)
     this._handleSelectionChange = this._onSelectionChange.bind(this)
     this._handleClick = this._onClick.bind(this)
+    this._handleDragOver = this._onDragOver.bind(this)
+    this._handleDragLeave = this._onDragLeave.bind(this)
+    this._handleDrop = this._onDrop.bind(this)
   }
 
   // ─── Lifecycle ───
@@ -58,6 +61,9 @@ export class EditorEngine {
     containerEl.addEventListener('input', this._handleInput)
     containerEl.addEventListener('paste', this._handlePaste)
     containerEl.addEventListener('click', this._handleClick, true) // Use capture phase
+    containerEl.addEventListener('dragover', this._handleDragOver)
+    containerEl.addEventListener('dragleave', this._handleDragLeave)
+    containerEl.addEventListener('drop', this._handleDrop)
     document.addEventListener('selectionchange', this._handleSelectionChange)
   }
 
@@ -71,6 +77,9 @@ export class EditorEngine {
     this._container.removeEventListener('input', this._handleInput)
     this._container.removeEventListener('paste', this._handlePaste)
     this._container.removeEventListener('click', this._handleClick, true)
+    this._container.removeEventListener('dragover', this._handleDragOver)
+    this._container.removeEventListener('dragleave', this._handleDragLeave)
+    this._container.removeEventListener('drop', this._handleDrop)
     document.removeEventListener('selectionchange', this._handleSelectionChange)
     this._container = null
   }
@@ -359,6 +368,21 @@ export class EditorEngine {
     // Capture selection before paste
     this._selection?.captureSelection()
     
+    // Check for files first (images, videos, etc.)
+    const items = e.clipboardData?.items
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.kind === 'file') {
+          const file = item.getAsFile()
+          if (file) {
+            this._handleFileInsert(file)
+            return
+          }
+        }
+      }
+    }
+    
     const html = e.clipboardData?.getData('text/html')
     const text = e.clipboardData?.getData('text/plain')
 
@@ -526,8 +550,16 @@ export class EditorEngine {
         this._historyManager.push(this._model.getDoc(), sel)
       }
       this._deleteSelection(sel)
+      // Clean up empty lists and nodes after deletion
+      this._cleanupEmptyLists()
+      this._cleanupEmptyNodes()
+      this._model._ensureMinimumContent()
       this._reconcile()
-      this._selection.restoreSelection()
+      // Restore cursor after deletion
+      const firstText = getTextNodes(this._model.doc)[0]
+      if (firstText) {
+        this._selection.setCursorToNode(firstText.id, 0)
+      }
       this._bumpVersion()
       return
     }
@@ -541,9 +573,21 @@ export class EditorEngine {
         this._historyManager.push(this._model.getDoc(), sel)
       }
 
+      // Delete character before cursor
       this._model.applyTransaction({
         steps: [{ type: 'deleteText', data: { nodeId, offset: offset - 1, count: 1 } }],
       })
+      
+      // Check if text node became empty and clean up
+      const textNode = findNodeById(this._model.doc, nodeId)
+      if (textNode && textNode.type === 'text' && (!textNode.text || textNode.text.trim().length === 0)) {
+        // Remove all marks from empty text node
+        if (textNode.marks) {
+          delete textNode.marks
+        }
+        // Set to empty string for consistency
+        textNode.text = ''
+      }
 
       this._selection.setSavedSelection({
         anchorNodeId: nodeId,
@@ -553,6 +597,9 @@ export class EditorEngine {
         isCollapsed: true,
       })
 
+      // Clean up empty nodes after text deletion
+      this._cleanupEmptyNodes()
+      this._model._ensureMinimumContent()
       this._reconcile()
       this._selection.restoreSelection()
       this._bumpVersion()
@@ -569,6 +616,131 @@ export class EditorEngine {
       // Find the block's parent to check what's before it
       const parentInfo = findParent(this._model.doc, blockInfo.id)
       if (!parentInfo) return
+
+      // Check if the current block is empty
+      const isBlockEmpty = !blockNode.content || blockNode.content.every(n => {
+        if (n.type === 'text') {
+          return !n.text || n.text.trim().length === 0
+        }
+        return false
+      })
+
+      // If block is empty and not the only block, remove it
+      if (isBlockEmpty && parentInfo.parent.content.length > 1) {
+        if (this._historyManager) {
+          this._historyManager.push(this._model.getDoc(), sel)
+        }
+        parentInfo.parent.content.splice(parentInfo.index, 1)
+        this._model._ensureMinimumContent()
+        this._reconcile()
+        // Place cursor in the previous block or first block
+        const remainingBlocks = parentInfo.parent.content
+        if (remainingBlocks.length > 0) {
+          const targetBlock = remainingBlocks[Math.min(parentInfo.index, remainingBlocks.length - 1)]
+          const targetTextNodes = getTextNodes(targetBlock)
+          if (targetTextNodes.length > 0) {
+            const lastText = targetTextNodes[targetTextNodes.length - 1]
+            this._selection.setCursorToNode(lastText.id, lastText.text.length)
+          }
+        }
+        this._bumpVersion()
+        return
+      }
+
+      // Check if we're inside a list item
+      if (parentInfo.parent.type === 'listItem') {
+        const listItemInfo = findParent(this._model.doc, parentInfo.parent.id)
+        if (listItemInfo) {
+          const listNode = listItemInfo.parent
+          const listParent = findParent(this._model.doc, listNode.id)
+          
+          if (this._historyManager) {
+            this._historyManager.push(this._model.getDoc(), sel)
+          }
+
+          // If this is the first block in the first list item
+          if (parentInfo.index === 0 && listNode.content[0].id === parentInfo.parent.id) {
+            // Check if list item is empty or only has this empty block
+            const listItem = listNode.content[0]
+            const hasContent = listItem.content && listItem.content.some(b => {
+              const textNodes = getTextNodes(b)
+              return textNodes.some(tn => tn.text.trim().length > 0)
+            })
+
+            if (!hasContent) {
+              // Empty list item - remove it from the list
+              listNode.content.splice(0, 1)
+              
+              // If list is now empty, remove the list entirely
+              if (listNode.content.length === 0 && listParent) {
+                listParent.parent.content.splice(listParent.index, 1)
+                this._model._ensureMinimumContent()
+              }
+              
+              this._reconcile()
+              const firstText = getTextNodes(this._model.doc)[0]
+              if (firstText) {
+                this._selection.setCursorToNode(firstText.id, 0)
+              }
+              this._bumpVersion()
+              return
+            } else {
+              // List item has content - convert to paragraph and remove from list
+              const paragraph = {
+                id: generateId(),
+                type: 'paragraph',
+                content: deepClone(listItem.content),
+              }
+              
+              listNode.content.splice(0, 1)
+              
+              // If list is now empty, replace list with paragraph
+              if (listNode.content.length === 0 && listParent) {
+                listParent.parent.content.splice(listParent.index, 1, paragraph)
+              } else if (listParent) {
+                // Insert paragraph before the list
+                listParent.parent.content.splice(listParent.index, 0, paragraph)
+              }
+              
+              this._model._ensureMinimumContent()
+              this._reconcile()
+              const firstText = getTextNodes(paragraph)[0]
+              if (firstText) {
+                this._selection.setCursorToNode(firstText.id, 0)
+              }
+              this._bumpVersion()
+              return
+            }
+          } else {
+            // Not the first list item - merge with previous list item or convert to paragraph
+            const itemIndex = listNode.content.findIndex(item => item.id === parentInfo.parent.id)
+            if (itemIndex > 0) {
+              // Merge with previous list item
+              const prevItem = listNode.content[itemIndex - 1]
+              const currentItem = listNode.content[itemIndex]
+              
+              if (prevItem.content && currentItem.content) {
+                prevItem.content.push(...currentItem.content)
+                listNode.content.splice(itemIndex, 1)
+                
+                // If list is now empty, remove it
+                if (listNode.content.length === 0 && listParent) {
+                  listParent.parent.content.splice(listParent.index, 1)
+                }
+                
+                this._model._ensureMinimumContent()
+                this._reconcile()
+                const lastText = getTextNodes(prevItem)[getTextNodes(prevItem).length - 1]
+                if (lastText) {
+                  this._selection.setCursorToNode(lastText.id, lastText.text.length)
+                }
+                this._bumpVersion()
+                return
+              }
+            }
+          }
+        }
+      }
 
       // Check if we're inside a table cell
       if (parentInfo.parent.type === 'tableCell') {
@@ -717,45 +889,190 @@ export class EditorEngine {
 
   /** @private */
   _handlePasteHtml(html) {
-    // For now, strip HTML and paste as text
+    // Check for images in HTML
     const temp = document.createElement('div')
     temp.innerHTML = html
-    const text = temp.textContent || ''
-    this._handleInsertText(text)
+    const images = temp.querySelectorAll('img')
+    
+    if (images.length > 0) {
+      // Handle images from HTML paste
+      const sel = this._selection?.captureSelection()
+      if (!sel) return
+      
+      const block = this.findBlockForTextNode(sel.anchorNodeId)
+      if (!block) return
+      const parentInfo = findParent(this._model.doc, block.id)
+      if (!parentInfo) return
+      
+      if (this._historyManager) {
+        this._historyManager.push(this._model.getDoc(), sel)
+      }
+      
+      // Insert all images
+      images.forEach((img, index) => {
+        const imageNode = {
+          id: generateId(),
+          type: 'image',
+          attrs: {
+            src: img.getAttribute('src') || '',
+            alt: img.getAttribute('alt') || '',
+          }
+        }
+        const newParagraph = {
+          id: generateId(),
+          type: 'paragraph',
+          content: [{ id: generateId(), type: 'text', text: '' }],
+        }
+        
+        const insertIndex = parentInfo.index + 1 + (index * 2)
+        parentInfo.parent.content.splice(insertIndex, 0, imageNode, newParagraph)
+      })
+      
+      // Set cursor to last paragraph
+      const lastParagraph = parentInfo.parent.content[parentInfo.index + (images.length * 2)]
+      if (lastParagraph && lastParagraph.content && lastParagraph.content.length > 0) {
+        this._selection.setCursorToNode(lastParagraph.content[0].id)
+      }
+      
+      this._reconcile()
+      this._bumpVersion()
+    } else {
+      // No images, paste as text
+      const text = temp.textContent || ''
+      this._handleInsertText(text)
+    }
+  }
+
+  /** @private */
+  _onDragOver(e) {
+    // Allow drop by preventing default
+    e.preventDefault()
+    e.stopPropagation()
+    // Add visual feedback
+    if (this._container) {
+      this._container.style.opacity = '0.8'
+    }
+  }
+
+  /** @private */
+  _onDragLeave(e) {
+    // Only reset if we're leaving the container (not just a child element)
+    if (this._container && !this._container.contains(e.relatedTarget)) {
+      this._container.style.opacity = ''
+    }
+  }
+
+  /** @private */
+  _onDrop(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    // Remove visual feedback
+    if (this._container) {
+      this._container.style.opacity = ''
+    }
+    
+    // Capture selection at drop position
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0)
+      const textNode = range.startContainer
+      if (textNode.nodeType === Node.TEXT_NODE) {
+        const nodeId = textNode.getAttribute?.(NODE_ID_ATTR)
+        if (nodeId) {
+          this._selection?.setSavedSelection({
+            anchorNodeId: nodeId,
+            anchorOffset: range.startOffset,
+            focusNodeId: nodeId,
+            focusOffset: range.startOffset,
+            isCollapsed: true,
+          })
+        }
+      }
+    }
+    
+    this._selection?.captureSelection()
+    
+    // Handle dropped files
+    const files = e.dataTransfer?.files
+    if (files && files.length > 0) {
+      // Process all files
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        this._handleFileInsert(file)
+      }
+    }
+  }
+
+  /** @private */
+  _handleFileInsert(file) {
+    if (!file) return
+    
+    const sel = this._selection?.captureSelection()
+    if (!sel) return
+
+    const block = this.findBlockForTextNode(sel.anchorNodeId)
+    if (!block) return
+    const parentInfo = findParent(this._model.doc, block.id)
+    if (!parentInfo) return
+
+    if (this._historyManager) {
+      this._historyManager.push(this._model.getDoc(), sel)
+    }
+
+    const fileType = file.type || ''
+    const isImage = fileType.startsWith('image/')
+    const isVideo = fileType.startsWith('video/')
+    
+    if (isImage) {
+      // Create object URL for image
+      const imageUrl = URL.createObjectURL(file)
+      const imageNode = {
+        id: generateId(),
+        type: 'image',
+        attrs: {
+          src: imageUrl,
+          alt: file.name || 'Image',
+          // Store file reference for potential upload
+          _file: file.name,
+        }
+      }
+      
+      const newParagraph = {
+        id: generateId(),
+        type: 'paragraph',
+        content: [{ id: generateId(), type: 'text', text: '' }],
+      }
+
+      parentInfo.parent.content.splice(parentInfo.index + 1, 0, imageNode, newParagraph)
+      
+      this._reconcile()
+      this._selection.setCursorToNode(newParagraph.content[0].id)
+      this._bumpVersion()
+    } else if (isVideo) {
+      // For videos, insert as a link or placeholder
+      // You can extend this to support video nodes if needed
+      const videoUrl = URL.createObjectURL(file)
+      const videoText = `[Video: ${file.name}](${videoUrl})`
+      this._handleInsertText(videoText)
+    } else {
+      // For other files, insert as a link
+      const fileUrl = URL.createObjectURL(file)
+      const fileText = `[${file.name}](${fileUrl})`
+      this._handleInsertText(fileText)
+    }
   }
 
   // ─── Selection Helpers ───
 
   /**
-   * Delete the currently selected range.
+   * Delete the currently selected range - handles ALL content types.
    * @private
    */
   _deleteSelection(sel) {
     if (!sel || sel.isCollapsed) return
 
-    // Simple case: selection within same text node
-    if (sel.anchorNodeId === sel.focusNodeId) {
-      const start = Math.min(sel.anchorOffset, sel.focusOffset)
-      const end = Math.max(sel.anchorOffset, sel.focusOffset)
-
-      this._model.applyTransaction({
-        steps: [{
-          type: 'deleteText',
-          data: { nodeId: sel.anchorNodeId, offset: start, count: end - start },
-        }],
-      })
-
-      this._selection.setSavedSelection({
-        anchorNodeId: sel.anchorNodeId,
-        anchorOffset: start,
-        focusNodeId: sel.anchorNodeId,
-        focusOffset: start,
-        isCollapsed: true,
-      })
-      return
-    }
-
-    // Cross-node selection: collect all text nodes in order
+    // Collect all text nodes in document order
     const allTextNodes = []
     walkTree(this._model.doc, (node) => {
       if (node.type === 'text') allTextNodes.push(node)
@@ -763,17 +1080,120 @@ export class EditorEngine {
 
     const anchorIdx = allTextNodes.findIndex((n) => n.id === sel.anchorNodeId)
     const focusIdx = allTextNodes.findIndex((n) => n.id === sel.focusNodeId)
+    
     if (anchorIdx === -1 || focusIdx === -1) return
-
+    
     const startIdx = Math.min(anchorIdx, focusIdx)
     const endIdx = Math.max(anchorIdx, focusIdx)
     const startOffset = startIdx === anchorIdx ? sel.anchorOffset : sel.focusOffset
     const endOffset = endIdx === focusIdx ? sel.focusOffset : sel.anchorOffset
 
-    const steps = []
+    // Check if entire document is selected (select all case)
+    const totalTextNodes = allTextNodes.length
+    const selectedTextNodes = endIdx - startIdx + 1
+    
+    // Check if all top-level blocks are selected
+    const docTopLevelBlocks = this._model.doc.content || []
+    const blocksWithSelection = docTopLevelBlocks.filter(block => {
+      const blockTextNodes = getTextNodes(block)
+      return blockTextNodes.some(tn => {
+        const idx = allTextNodes.findIndex(n => n.id === tn.id)
+        return idx >= startIdx && idx <= endIdx
+      })
+    })
+    const allTopBlocksSelected = blocksWithSelection.length === docTopLevelBlocks.length && docTopLevelBlocks.length > 0
+    
+    // Determine if this is a "select all" operation
+    const isSelectAll = allTopBlocksSelected ||
+                       (startIdx === 0 && endIdx === totalTextNodes - 1 && totalTextNodes > 0) ||
+                       (selectedTextNodes === totalTextNodes && totalTextNodes > 0) ||
+                       (selectedTextNodes >= totalTextNodes * 0.95 && totalTextNodes > 0) // 95% or more selected
 
-    // Delete from end to start to preserve indices
-    // Last node: delete from 0 to endOffset
+    if (isSelectAll) {
+      // Delete all content blocks from document
+      if (this._historyManager) {
+        this._historyManager.push(this._model.getDoc(), sel)
+      }
+      
+      // Clear all content
+      this._model.doc.content = []
+      
+      // Ensure minimum content
+      this._model._ensureMinimumContent()
+      
+      // Set cursor to first text node
+      const firstText = getTextNodes(this._model.doc)[0]
+      if (firstText) {
+        this._selection.setCursorToNode(firstText.id, 0)
+      }
+      
+      this._reconcile()
+      this._bumpVersion()
+      return
+    }
+
+    // Find top-level blocks (direct children of doc) that contain selected text
+    const topLevelBlocks = this._model.doc.content || []
+    const topLevelBlocksWithSelection = []
+
+    for (let i = 0; i < topLevelBlocks.length; i++) {
+      const topBlock = topLevelBlocks[i]
+      // Get all text nodes in this top-level block and its descendants
+      const blockTextNodes = getTextNodes(topBlock)
+      const hasSelectedText = blockTextNodes.some(tn => {
+        const idx = allTextNodes.findIndex(n => n.id === tn.id)
+        return idx >= startIdx && idx <= endIdx
+      })
+      
+      if (hasSelectedText) {
+        topLevelBlocksWithSelection.push({ block: topBlock, index: i })
+      }
+    }
+
+    // If we found top-level blocks with selection, delete them
+    if (topLevelBlocksWithSelection.length > 0) {
+      if (this._historyManager) {
+        this._historyManager.push(this._model.getDoc(), sel)
+      }
+
+      // Delete all top-level blocks that contain selected text
+      // Delete from end to start to maintain indices
+      const indicesToDelete = topLevelBlocksWithSelection.map(item => item.index).sort((a, b) => b - a)
+      
+      for (const index of indicesToDelete) {
+        this._model.doc.content.splice(index, 1)
+      }
+
+      // Clean up empty lists
+      this._cleanupEmptyLists()
+      
+      // Ensure minimum content
+      this._model._ensureMinimumContent()
+
+      // Set cursor position
+      const remainingBlocks = this._model.doc.content
+      if (remainingBlocks.length > 0) {
+        const targetBlock = remainingBlocks[Math.min(topLevelBlocksWithSelection[0].index, remainingBlocks.length - 1)]
+        const targetTextNodes = getTextNodes(targetBlock)
+        if (targetTextNodes.length > 0) {
+          this._selection.setCursorToNode(targetTextNodes[0].id, 0)
+        }
+      } else {
+        const firstText = getTextNodes(this._model.doc)[0]
+        if (firstText) {
+          this._selection.setCursorToNode(firstText.id, 0)
+        }
+      }
+
+      this._reconcile()
+      this._bumpVersion()
+      return
+    }
+
+    // Fallback: Delete text from selected nodes
+    const steps = []
+    
+    // Delete text from last node
     if (startIdx !== endIdx) {
       steps.push({
         type: 'deleteText',
@@ -781,27 +1201,49 @@ export class EditorEngine {
       })
     }
 
-    // Middle nodes: delete entirely (set text to empty)
+    // Delete middle nodes entirely
     for (let i = endIdx - 1; i > startIdx; i--) {
       allTextNodes[i].text = ''
+      if (allTextNodes[i].marks) delete allTextNodes[i].marks
     }
 
-    // First node: delete from startOffset to end
-    const startNode = allTextNodes[startIdx]
+    // Delete text from first node
     steps.push({
       type: 'deleteText',
-      data: { nodeId: startNode.id, offset: startOffset, count: startNode.text.length - startOffset },
+      data: { nodeId: allTextNodes[startIdx].id, offset: startOffset, count: allTextNodes[startIdx].text.length - startOffset },
     })
 
-    this._model.applyTransaction({ steps })
+    if (steps.length > 0) {
+      if (this._historyManager) {
+        this._historyManager.push(this._model.getDoc(), sel)
+      }
+      this._model.applyTransaction({ steps })
+    }
 
-    this._selection.setSavedSelection({
-      anchorNodeId: startNode.id,
-      anchorOffset: startOffset,
-      focusNodeId: startNode.id,
-      focusOffset: startOffset,
-      isCollapsed: true,
-    })
+    // Clean up empty blocks
+    this._cleanupEmptyNodes()
+    this._cleanupEmptyLists()
+    this._model._ensureMinimumContent()
+
+    // Set cursor position
+    const remainingTextNodes = allTextNodes.filter((tn, idx) => idx < startIdx || idx > endIdx)
+    if (remainingTextNodes.length > 0) {
+      const targetNode = remainingTextNodes[Math.min(startIdx, remainingTextNodes.length - 1)]
+      this._selection.setSavedSelection({
+        anchorNodeId: targetNode.id,
+        anchorOffset: 0,
+        focusNodeId: targetNode.id,
+        focusOffset: 0,
+        isCollapsed: true,
+      })
+    } else {
+      const firstText = getTextNodes(this._model.doc)[0]
+      if (firstText) {
+        this._selection.setCursorToNode(firstText.id, 0)
+      }
+    }
+
+    this._bumpVersion()
   }
 
   // ─── DOM Reconciliation ───
@@ -915,7 +1357,7 @@ export class EditorEngine {
       case 'backColor':
         return `<span style="background-color: ${this._escapeAttr(mark.attrs?.color || 'transparent')}">${html}</span>`
       case 'mention':
-        return `<span style="background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:4px;font-weight:500" contenteditable="false" data-mention="${this._escapeAttr(mark.attrs?.userId || '')}">${html}</span>`
+        return `<span style="background:#dbeafe;color:#1d4ed8;padding:1px 4px;border-radius:4px;font-weight:500" data-mention="${this._escapeAttr(mark.attrs?.userId || '')}">${html}</span>`
       case 'anchor':
         return `<a id="${this._escapeAttr(mark.attrs?.name || '')}">${html}</a>`
       default:
@@ -1250,5 +1692,91 @@ export class EditorEngine {
   subscribe(listener) {
     this._listeners.add(listener)
     return () => this._listeners.delete(listener)
+  }
+
+  /** @private */
+  _cleanupEmptyLists() {
+    // Find and remove empty lists
+    const emptyLists = []
+    walkTree(this._model.doc, (node) => {
+      if ((node.type === 'bulletList' || node.type === 'orderedList') && 
+          (!node.content || node.content.length === 0)) {
+        const listParent = findParent(this._model.doc, node.id)
+        if (listParent) {
+          emptyLists.push({ node, listParent })
+        }
+      }
+    })
+
+    for (const { node, listParent } of emptyLists) {
+      listParent.parent.content.splice(listParent.index, 1)
+    }
+  }
+
+  /** @private */
+  _cleanupEmptyNodes() {
+    let changed = true
+    // Keep cleaning until no more changes (multiple passes may be needed)
+    while (changed) {
+      changed = false
+      
+      // Remove empty text nodes
+      const nodesToRemove = []
+      walkTree(this._model.doc, (node) => {
+        if (node.type === 'text' && (!node.text || node.text.trim().length === 0)) {
+          const parentInfo = findParent(this._model.doc, node.id)
+          if (parentInfo && parentInfo.parent.content) {
+            // Check if there are other non-empty nodes in the parent
+            const hasNonEmptyContent = parentInfo.parent.content.some(n => 
+              n.id !== node.id && (n.type !== 'text' || (n.text && n.text.trim().length > 0))
+            )
+            // Remove empty text node if there's other content, or if it's not the only node
+            if (hasNonEmptyContent || parentInfo.parent.content.length > 1) {
+              nodesToRemove.push({ node, parentInfo })
+              changed = true
+            }
+          }
+        }
+      })
+
+      // Remove empty text nodes
+      for (const { node, parentInfo } of nodesToRemove) {
+        const index = parentInfo.parent.content.findIndex(n => n.id === node.id)
+        if (index !== -1) {
+          parentInfo.parent.content.splice(index, 1)
+        }
+      }
+
+      // Clean up blocks with no meaningful content
+      const emptyBlocks = []
+      walkTree(this._model.doc, (node) => {
+        if ((node.type === 'paragraph' || node.type === 'heading' || node.type === 'blockquote') && 
+            node.content) {
+          // Check if block has only empty text nodes
+          const hasContent = node.content.some(n => {
+            if (n.type === 'text') {
+              return n.text && n.text.trim().length > 0
+            }
+            return true // Non-text nodes count as content
+          })
+          
+          if (!hasContent) {
+            const blockParent = findParent(this._model.doc, node.id)
+            if (blockParent && blockParent.parent.type !== 'listItem' && blockParent.parent.type !== 'doc') {
+              emptyBlocks.push({ node, blockParent })
+              changed = true
+            }
+          }
+        }
+      })
+
+      // Remove empty blocks
+      for (const { node, blockParent } of emptyBlocks) {
+        const index = blockParent.parent.content.findIndex(n => n.id === node.id)
+        if (index !== -1) {
+          blockParent.parent.content.splice(index, 1)
+        }
+      }
+    }
   }
 }
